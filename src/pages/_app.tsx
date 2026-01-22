@@ -51,13 +51,8 @@ function App({ Component, pageProps }) {
                         <footer className="fixed bottom-0 left-0 w-full z-40 bg-background border-t border-border select-none py-2">
                             <div className="container mx-auto px-2">
                                 <div className="flex flex-col items-center gap-1">
-                                    <p className="text-center text-xs text-muted-foreground">discord-themes(.com) is not affiliated with or endorsed by Discord Inc.</p>
+                                    <p className="text-center text-xs text-muted-foreground">themes.equicord.org is not affiliated with or endorsed by Discord Inc.</p>
                                     <div className="flex flex-col sm:flex-row items-center gap-2 text-xs text-muted-foreground">
-                                        <a href="https://www.cloudflare.com" className="text-muted-foreground no-underline hover:text-foreground transition-colors duration-200 flex items-center gap-2" target="_blank" rel="noopener noreferrer">
-                                            Protected by Cloudflare
-                                        </a>
-                                        <div className="h-3 w-px bg-muted-foreground/60 sm:block hidden"></div>
-                                        <span className="text-muted-foreground">hosted on a samsung fridge!</span>
                                         <div className="h-3 w-px bg-muted-foreground/60 sm:block hidden"></div>
                                         <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-muted-foreground no-underline hover:text-foreground transition-colors duration-200 flex items-center gap-2">
                                             Privacy Policy
