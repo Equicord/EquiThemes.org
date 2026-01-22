@@ -36,6 +36,9 @@
       "@hooks/*": [
         "src/hooks/*"
       ],
+      "@context/*": [
+        "src/context/*"
+      ],
       "@context/auth": [
         "src/context/auth.tsx"
       ],

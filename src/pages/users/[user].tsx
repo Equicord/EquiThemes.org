@@ -1,7 +1,7 @@
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { ThemeCard } from "@components/theme/card";
-import { ArrowUp, Ban, Book, Download, Flag, Heart, SearchX, Shield, Calendar, Clock, TrendingUp, Star, Users, Award, Zap, Trophy, Eye, ExternalLink, Share2, Copy } from "lucide-react";
+import { ArrowUp, Ban, Book, Download, Flag, Heart, SearchX, Shield, Calendar, Clock, TrendingUp, Star, Users, Award, Zap, Trophy, Eye, ExternalLink, Share2, Copy, Lock } from "lucide-react";
 import { type Author, type Theme } from "@types";
 import { Button } from "@components/ui/button";
 import { useWebContext } from "@context/auth";
@@ -11,6 +11,9 @@ import { Skeleton } from "@components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@components/ui/alert";
 import { Badge } from "@components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@components/ui/dialog";
+import { Input } from "@components/ui/input";
+import { Label } from "@components/ui/label";
 import { toast } from "@hooks/use-toast";
 import { getCookie } from "@utils/cookies";
 import ImageWithFallback from "@components/ui/image-fallback";
@@ -52,6 +55,9 @@ export default function User() {
     const [showScrollTop, setShowScrollTop] = useState(false);
     const [userActivity, setUserActivity] = useState<UserActivity | null>(null);
     const [shareTooltip, setShareTooltip] = useState(false);
+    const [showBanModal, setShowBanModal] = useState(false);
+    const [banReason, setBanReason] = useState("");
+    const [isBanning, setIsBanning] = useState(false);
     const { authorizedUser, isAuthenticated, isLoading, themes } = useWebContext();
 
     const userToken = useMemo(() => {
@@ -206,6 +212,57 @@ export default function User() {
         }
     }, [userThemes, invalid, isLoading, generateUserActivity]);
 
+    const handleBanUser = async () => {
+        if (!userThemes.user.id || !banReason.trim()) {
+            toast({
+                title: "Error",
+                description: "Please provide a reason for banning",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        setIsBanning(true);
+        try {
+            const response = await fetch("/api/user/ban", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${getCookie("_dtoken")}`
+                },
+                body: JSON.stringify({
+                    userId: userThemes.user.id,
+                    action: "ban",
+                    reason: banReason
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || "Failed to ban user");
+            }
+
+            toast({
+                title: "Success",
+                description: `User ${userThemes.user.global_name} has been banned from submissions`,
+                variant: "default"
+            });
+
+            setShowBanModal(false);
+            setBanReason("");
+            // Refresh user data
+            await fetchThemes();
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: error instanceof Error ? error.message : "Failed to ban user",
+                variant: "destructive"
+            });
+        } finally {
+            setIsBanning(false);
+        }
+    };
+
     const UserStats = () => (
         <div className="space-y-6 w-full mt-6">
             {userActivity && (
@@ -337,6 +394,46 @@ export default function User() {
                                                 </AlertDialogFooter>
                                             </AlertDialogContent>
                                         </AlertDialog>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-4">
+                                        <Dialog open={showBanModal} onOpenChange={setShowBanModal}>
+                                            <DialogTrigger asChild>
+                                                <Button variant="secondary" disabled={userThemes.user.admin || invalid || isLoading} className="flex items-center gap-2">
+                                                    <Lock className="w-4 h-4" />
+                                                    Ban from Submissions
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle>Ban from Submissions</DialogTitle>
+                                                </DialogHeader>
+                                                <div className="space-y-4">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="ban-reason">Reason for ban</Label>
+                                                        <textarea
+                                                            id="ban-reason"
+                                                            value={banReason}
+                                                            onChange={(e) => setBanReason(e.target.value)}
+                                                            placeholder="Explain why this user is being banned from submissions..."
+                                                            className="w-full h-24 p-2 border border-input rounded-lg bg-background text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                                                        />
+                                                    </div>
+                                                    <div className="flex justify-end gap-2 pt-4">
+                                                        <Button variant="outline" onClick={() => setShowBanModal(false)} disabled={isBanning}>
+                                                            Cancel
+                                                        </Button>
+                                                        <Button 
+                                                            variant="destructive" 
+                                                            onClick={handleBanUser}
+                                                            disabled={isBanning || !banReason.trim()}
+                                                        >
+                                                            {isBanning ? "Banning..." : "Confirm Ban"}
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </DialogContent>
+                                        </Dialog>
                                     </div>
                                 </div>
                             )}

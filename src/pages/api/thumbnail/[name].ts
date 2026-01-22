@@ -13,5 +13,5 @@ export default async function GET(req: NextApiRequest, res: NextApiResponse) {
     res.setHeader("Content-Disposition", "inline");
     res.setHeader("Cache-Control", "public, max-age=1200");
 
-    res.redirect(301, `https://cdn.discord-themes.com/theme/${decodedName}`);
+    res.redirect(301, `https://cdn.themes.equicord.org/theme/${decodedName}`);
 }

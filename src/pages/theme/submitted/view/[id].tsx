@@ -4,7 +4,8 @@
 import React, { useEffect, useState } from "react";
 import { useWebContext } from "@context/auth";
 import { getCookie } from "@utils/cookies";
-import { Check, ExternalLink, Loader2, X } from "lucide-react";
+import { Check as CheckIcon, OpenInNew } from "@mui/icons-material";
+import CloseIcon from "@mui/icons-material/Close";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { Button } from "@components/ui/button";
 import { Badge } from "@components/ui/badge";
@@ -45,6 +46,9 @@ function ThemeList() {
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const [newTag, setNewTag] = useState("");
     const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+    const [rejectionReason, setRejectionReason] = useState("");
+    const [banUser, setBanUser] = useState(false);
+    const [banReason, setBanReason] = useState("");
 
     const handleAddTag = () => {
         if (newTag && selectedTags.length < 5 && !selectedTags.includes(newTag)) {
@@ -100,7 +104,12 @@ function ThemeList() {
                 headers: {
                     Authorization: `Bearer ${getCookie("_dtoken")}`,
                     "Content-Type": "application/json"
-                }
+                },
+                body: JSON.stringify({
+                    reason: rejectionReason || "No reason provided",
+                    banUser,
+                    banReason: banReason || "Policy violation"
+                })
             });
 
             if (!response.ok) {
@@ -111,7 +120,7 @@ function ThemeList() {
 
             toast({
                 title: "Rejected",
-                description: `Rejected the theme '${themes.title}'!`
+                description: `Rejected the theme '${themes.title}'!${banUser ? " User has been banned from submissions." : ""}`
             });
         } catch (err) {
             toast({
@@ -221,7 +230,9 @@ function ThemeList() {
     if (isLoading || loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin" />
+                <div className="flex flex-col items-center gap-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-muted border-t-primary"></div>
+                </div>
             </div>
         );
     }
@@ -232,7 +243,7 @@ function ThemeList() {
                 {isLoading || loading ? (
                     <div className="flex items-center justify-center min-h-[60vh]">
                         <div className="flex flex-col items-center gap-4">
-                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                            <div className="animate-spin rounded-full h-8 w-8 border-2 border-muted border-t-primary"></div>
                             <p className="text-muted-foreground">Loading theme details...</p>
                         </div>
                     </div>
@@ -284,7 +295,7 @@ function ThemeList() {
                                                 </pre>
                                             </div>
                                             <a href={themes?.sourceLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-2 text-sm text-muted-foreground hover:text-primary transition-colors">
-                                                <ExternalLink className="w-4 h-4" />
+                                                <OpenInNew sx={{ width: 16, height: 16 }} />
                                                 View source code
                                             </a>
                                         </div>
@@ -347,12 +358,50 @@ function ThemeList() {
                                                         </div>
 
                                                         <div className="pt-4 border-t border-muted space-y-4">
+                                                            <div className="space-y-4">
+                                                                <div>
+                                                                    <label htmlFor="reject-reason" className="text-sm font-medium mb-2 block">Rejection Reason</label>
+                                                                    <textarea
+                                                                        id="reject-reason"
+                                                                        value={rejectionReason}
+                                                                        onChange={(e) => setRejectionReason(e.target.value)}
+                                                                        placeholder="Explain why this theme is being rejected..."
+                                                                        className="w-full h-20 p-2 border border-muted rounded-lg bg-muted/30 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                                                                    />
+                                                                </div>
+
+                                                                <div className="flex items-center gap-2">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        id="ban-user"
+                                                                        checked={banUser}
+                                                                        onChange={(e) => setBanUser(e.target.checked)}
+                                                                        className="w-4 h-4 rounded border-muted"
+                                                                    />
+                                                                    <label htmlFor="ban-user" className="text-sm font-medium cursor-pointer">Ban user from submissions</label>
+                                                                </div>
+
+                                                                {banUser && (
+                                                                    <div>
+                                                                        <label htmlFor="ban-reason" className="text-sm font-medium mb-2 block">Ban Reason</label>
+                                                                        <input
+                                                                            id="ban-reason"
+                                                                            type="text"
+                                                                            value={banReason}
+                                                                            onChange={(e) => setBanReason(e.target.value)}
+                                                                            placeholder="e.g., Policy violation, spam..."
+                                                                            className="w-full h-9 px-2 border border-muted rounded-lg bg-muted/30 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                                                        />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
                                                             <Button variant="default" className="w-full bg-green-600 hover:bg-green-700" onClick={handleApprove}>
-                                                                <Check className="w-4 h-4 mr-2" />
+                                                                <CheckIcon sx={{ width: 16, height: 16, marginRight: 1 }} />
                                                                 Approve Theme
                                                             </Button>
                                                             <Button variant="destructive" className="w-full" onClick={handleReject}>
-                                                                <X className="w-4 h-4 mr-2" />
+                                                                <CloseIcon sx={{ width: 16, height: 16, marginRight: 1 }} />
                                                                 Reject Theme
                                                             </Button>
                                                         </div>

@@ -83,41 +83,74 @@ export function DropdownFilter({ onChange, className, defaultValue = "", label =
 
             <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
-                    <Button ref={triggerRef} id={`${filterId}-trigger`} variant="outline" role="combobox" aria-expanded={open} aria-haspopup="listbox" aria-controls={`${filterId}-listbox`} aria-label={label} aria-describedby={`${filterId}-description`} className="w-full justify-between hover:bg-muted focus-visible:ring-2 focus-visible:ring-offset-2 min-h-[44px] touch-manipulation">
+                    <Button 
+                        ref={triggerRef} 
+                        id={`${filterId}-trigger`} 
+                        variant="outline" 
+                        role="combobox" 
+                        aria-expanded={open} 
+                        aria-haspopup="listbox" 
+                        aria-controls={`${filterId}-listbox`} 
+                        aria-label={label} 
+                        aria-describedby={`${filterId}-description`} 
+                        className="w-full justify-between h-12 bg-card border-border hover:bg-card hover:border-primary text-foreground transition-all duration-200 rounded-2xl"
+                    >
                         <span className="flex items-center gap-2 truncate">
                             {value ? (
                                 <>
-                                    <Badge variant="secondary" className="font-normal">
+                                    <Badge variant="secondary" className="font-medium text-xs px-2 py-1 rounded-lg">
                                         {selectedOption?.label}
                                     </Badge>
                                 </>
                             ) : (
-                                label
+                                <span className="text-muted-foreground">{label}</span>
                             )}
                         </span>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-2">
                             {value && (
-                                <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-full" onClick={handleClear} aria-label="Clear selection">
-                                    <X className="h-4 w-4" />
-                                </Button>
+                                <X 
+                                    className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-pointer" 
+                                    onClick={handleClear} 
+                                    aria-label="Clear selection" 
+                                />
                             )}
-                            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                            <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
                         </div>
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-full sm:w-[240px] p-0 max-w-[90vw] max-h-[80vh]" align="start" sideOffset={4}>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 border-border/50 bg-background/95 backdrop-blur-md rounded-2xl shadow-lg" align="start" sideOffset={4}>
                     <Command ref={commandRef}>
-                        <CommandInput placeholder="Search filters..." value={searchQuery} onValueChange={setSearchQuery} className="h-10" aria-label="Search filters" />
+                        <CommandInput 
+                            placeholder="Search filters..." 
+                            value={searchQuery} 
+                            onValueChange={setSearchQuery} 
+                            className="h-10 border-b border-border/30" 
+                            aria-label="Search filters" 
+                        />
                         <CommandList>
-                            <CommandEmpty className="p-4 text-sm text-muted-foreground justify-center">No filters found.</CommandEmpty>
-                            <CommandGroup className="max-h-[300px] overflow-y-auto" aria-labelledby={`${filterId}-trigger`} id={`${filterId}-listbox`}>
+                            <CommandEmpty className="p-4 text-sm text-muted-foreground text-center">No filters found.</CommandEmpty>
+                            <CommandGroup 
+                                className="max-h-[320px] overflow-y-auto p-2" 
+                                aria-labelledby={`${filterId}-trigger`} 
+                                id={`${filterId}-listbox`}
+                            >
                                 {filterOptions.map((option) => (
-                                    <CommandItem key={option.value} value={option.value} onSelect={handleSelect} className="flex items-center gap-2 px-3 py-2.5 cursor-pointer data-[selected=true]:bg-accent" aria-selected={value === option.value} role="option" data-selected={value === option.value}>
-                                        <div className="flex items-center gap-2 flex-1">
-                                            <div className="flex-shrink-0 w-4">{value === option.value && <Check className="h-4 w-4" />}</div>
-                                            <div className="flex flex-col">
-                                                <span className="font-medium">{option.label}</span>
-                                                <span className="text-xs text-muted-foreground">{option.description}</span>
+                                    <CommandItem 
+                                        key={option.value} 
+                                        value={option.value} 
+                                        onSelect={handleSelect} 
+                                        className="group flex items-center gap-3 px-3 py-3 cursor-pointer rounded-lg hover:bg-transparent hover:border-2 hover:border-primary/30 border-2 border-transparent data-[selected=true]:bg-muted/30 text-foreground transition-colors" 
+                                        aria-selected={value === option.value} 
+                                        role="option" 
+                                        data-selected={value === option.value}
+                                    >
+                                        <div className="flex items-center gap-3 flex-1">
+                                            <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-md border-2 border-muted-foreground/30 hover:border-primary transition-colors">
+                                                {value === option.value && <Check className="h-4 w-4 text-primary" />}
+                                            </div>
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="font-medium text-sm group-hover:text-primary">{option.label}</span>
+                                                <span className="text-xs text-muted-foreground leading-tight group-hover:text-primary/70">{option.description}</span>
                                             </div>
                                         </div>
                                     </CommandItem>
@@ -128,7 +161,7 @@ export function DropdownFilter({ onChange, className, defaultValue = "", label =
                 </PopoverContent>
             </Popover>
 
-            {/* Hidden description for screen readers */}
+            
             <VisuallyHidden id={`${filterId}-description`}>Select a sorting option from the dropdown list. Use arrow keys to navigate, Enter to select, and Escape to close the dropdown.</VisuallyHidden>
         </div>
     );

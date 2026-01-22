@@ -35,20 +35,34 @@ const ScreamsOfTheDoomed = () => {
 
     return (
         <>
-            <main className="flex flex-col items-center justify-center min-h-[calc(100vh-73px)] px-4">
-                <div className="max-w-md w-full text-center space-y-8">
-                    <h1 className="text-5xl sm:text-6xl font-bold">404</h1>
-                    <p className="text-lg sm:text-xl text-muted-foreground">Oops! The page you're looking for doesn't exist.</p>
-                    <Button
-                        size="lg"
-                        onClick={() => {
-                            window.location.href = "/";
-                        }}
-                        variant="outline"
-                        className="w-full sm:w-auto"
-                    >
-                        Head Back
-                    </Button>
+            <main className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] px-4">
+                <div className="max-w-lg w-full text-center space-y-8">
+                    <div className="space-y-4">
+                        <h1 className="text-6xl sm:text-7xl font-bold tracking-tight">404</h1>
+                        <h2 className="text-2xl sm:text-3xl font-semibold text-foreground">Page Not Found</h2>
+                        <p className="text-lg text-muted-foreground leading-relaxed max-w-md mx-auto">
+                            The page you're looking for doesn't exist or has been moved. Let's get you back on track.
+                        </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                        <Button
+                            size="lg"
+                            onClick={() => {
+                                window.location.href = "/";
+                            }}
+                            className="px-8"
+                        >
+                            Go Home
+                        </Button>
+                        <Button
+                            size="lg"
+                            variant="outline"
+                            onClick={() => window.history.back()}
+                            className="px-8"
+                        >
+                            Go Back
+                        </Button>
+                    </div>
                 </div>
             </main>
         </>

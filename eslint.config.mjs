@@ -38,7 +38,7 @@ export default [...fixupConfigRules(compat.extends(
         },
     },
 
-    ignores: ["**/.next", "**/.vercel", "**/node_modules", "**/public"],
+    ignores: ["**/.next", "**/node_modules", "**/public"],
 
     rules: {
         "sort-imports": ["warn", {

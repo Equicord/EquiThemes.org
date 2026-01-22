@@ -11,105 +11,154 @@ export default function PrivacyPolicy() {
             <Head>
                 <meta name="viewport" content="initial-scale=1, width=device-width" />
                 <meta name="keywords" content="discord themes privacy policy, theme library privacy, data protection, user privacy, discord customization privacy" />
-                <meta name="theme-color" content="#5865F2" />
+                <meta name="theme-color" content="#1a1b26" />
                 <meta name="application-name" content="Theme Library" />
                 <meta name="description" content="Learn about Theme Library's privacy policy, data collection practices, and how we protect your information when using our Discord theme platform." />
                 <meta property="og:type" content="website" />
-                <meta property="og:url" content="https://discord-themes.com/" />
+                <meta property="og:url" content="https://themes.equicord.org/" />
                 <meta property="og:title" content="Privacy Policy | Theme Library" />
                 <meta property="og:description" content="Read our privacy policy to understand how Theme Library handles your data and protects your privacy when using our Discord theme platform." />
                 <title>Privacy Policy | Theme Library</title>
                 <link rel="icon" href="/favicon.ico" />
             </Head>
 
-            <div className="min-h-screen bg-background">
-                <main className="container mx-auto px-4 py-8 description">
-                    <div className="max-w-3xl mx-auto">
-                        <div className="flex items-center justify-between mb-6">
-                            <h1 className="text-3xl font-bold">Privacy Policy</h1>
+            <div className="">
+                <main className="max-w-4xl mx-auto px-4 py-12">
+                    <div className="space-y-12">
+                        <div className="text-center space-y-4">
+                            <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Privacy Policy</h1>
+                            <p className="text-lg text-muted-foreground">
+                                Your privacy is important to us. Learn how we collect, use, and protect your information.
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                Last updated: {lastUpdated.toLocaleDateString()}
+                            </p>
                         </div>
-                        <p className="text-sm text-muted-foreground mb-8">Last updated: {lastUpdated.toLocaleDateString()}</p>
 
-                        <div className="space-y-8">
+                        <div className="grid gap-8">
                             <section>
-                                <h2 className="text-xl font-semibold mb-4">Introduction</h2>
-                                <p className="text-muted-foreground">This Privacy Policy explains how Theme Library ("we," "us," or "our") collects, uses, and protects your information when you use our service.</p>
-                            </section>
-
-                            <section>
-                                <h2 className="text-xl font-semibold mb-4">Data Collection</h2>
-                                <p className="text-muted-foreground mb-4">We collect limited information through Discord's OAuth authentication process. We do not sell your personal data to any third parties.</p>
-
-                                <Card className="p-6 mb-6">
-                                    <CardContent className="p-0 space-y-4">
-                                        <h3 className="text-3xl font-medium">Collected Data</h3>
-                                        <p className="text-muted-foreground">By authorizing with Discord you grant us the right to store the following associated data:</p>
-                                        <div className="grid gap-2 text-muted-foreground">
-                                            <div className="flex items-center gap-2">
-                                                <Check />
-                                                <span>Discord User ID</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Check />
-                                                <span>Username</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Check />
-                                                <span>Avatar</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Check />
-                                                <span>Preferred Color</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Check />
-                                                <span>GitHub connection status (if available)</span>
-                                            </div>
-                                        </div>
+                                <Card className="border-border/40">
+                                    <CardContent className="p-8">
+                                        <h2 className="text-2xl font-semibold mb-6">Introduction</h2>
+                                        <p className="text-muted-foreground leading-relaxed">
+                                            This Privacy Policy explains how Theme Library ("we," "us," or "our") collects, uses, and protects your information when you use our service. We are committed to maintaining your privacy and providing transparency about our data practices.
+                                        </p>
                                     </CardContent>
                                 </Card>
-
-                                <p className="text-muted-foreground mt-4">
-                                    You can read more about those shared data in the official Discord Developer Documentation,{" "}
-                                    <a href="https://discord.com/developers/docs/topics/oauth2" className="text-primary-foreground">
-                                        here
-                                    </a>
-                                    .
-                                </p>
                             </section>
 
                             <section>
-                                <h2 className="text-xl font-semibold mb-4">Data Usage</h2>
-                                <p className="text-muted-foreground mb-4">The collected information is used solely for:</p>
-                                <ul className="list-disc pl-6 text-muted-foreground">
-                                    <li>Providing and maintaining our service</li>
-                                    <li>User authentication</li>
-                                    <li>Displaying your profile information within the platform</li>
-                                    <li>Managing theme submissions and credits</li>
-                                </ul>
+                                <Card className="border-border/40">
+                                    <CardContent className="p-8">
+                                        <h2 className="text-2xl font-semibold mb-6">Data Collection</h2>
+                                        <p className="text-muted-foreground mb-6 leading-relaxed">
+                                            We collect limited information through Discord's OAuth authentication process. We do not sell your personal data to any third parties.
+                                        </p>
+
+                                        <div className="bg-muted/30 rounded-xl p-6 border border-border/30">
+                                            <h3 className="text-xl font-semibold mb-4">Information We Collect</h3>
+                                            <p className="text-muted-foreground mb-4">
+                                                When you authorize with Discord, we store the following data:
+                                            </p>
+                                            <div className="grid gap-3">
+                                                {[
+                                                    "Discord User ID",
+                                                    "Username and display name",
+                                                    "Avatar image",
+                                                    "Preferred accent color",
+                                                    "GitHub connection status (if available)"
+                                                ].map((item) => (
+                                                    <div key={item} className="flex items-center gap-3">
+                                                        <div className="bg-primary/10 p-1 rounded-full">
+                                                            <Check className="h-4 w-4 text-primary" />
+                                                        </div>
+                                                        <span className="text-sm font-medium">{item}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <p className="text-muted-foreground mt-6">
+                                            Learn more about Discord's data sharing in their{" "}
+                                            <a 
+                                                href="https://discord.com/developers/docs/topics/oauth2" 
+                                                className="text-primary hover:underline font-medium"
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                            >
+                                                official OAuth documentation
+                                            </a>.
+                                        </p>
+                                    </CardContent>
+                                </Card>
                             </section>
 
                             <section>
-                                <h2 className="text-xl font-semibold mb-4">Data Protection</h2>
-                                <p className="text-muted-foreground">We implement appropriate security measures to protect your personal information. Your data is stored securely and is only accessible to authorized personnel.</p>
+                                <Card className="border-border/40">
+                                    <CardContent className="p-8">
+                                        <h2 className="text-2xl font-semibold mb-6">How We Use Your Data</h2>
+                                        <p className="text-muted-foreground mb-4 leading-relaxed">
+                                            The information we collect is used exclusively for:
+                                        </p>
+                                        <ul className="space-y-3 text-muted-foreground">
+                                            {[
+                                                "Providing and maintaining our service",
+                                                "User authentication and account management",
+                                                "Displaying your profile within the platform",
+                                                "Managing theme submissions and attributions",
+                                                "Improving user experience and platform functionality"
+                                            ].map((item, index) => (
+                                                <li key={index} className="flex items-start gap-3">
+                                                    <div className="bg-muted rounded-full p-1 mt-1">
+                                                        <div className="w-1.5 h-1.5 bg-foreground rounded-full"></div>
+                                                    </div>
+                                                    <span>{item}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </CardContent>
+                                </Card>
                             </section>
 
                             <section>
-                                <h2 className="text-xl font-semibold mb-4">Your Rights</h2>
-                                <p className="text-muted-foreground">
-                                    You have the right to request access to, correction of, or deletion of your personal information. To exercise these rights, please head to the Settings page accessible via the Account Settings on the top right. If you do not have access to your account but can prove ownership we can assist you in the process by contacting us via E-Mail,{" "}
-                                    <a href="mailto:privacy@discord-themes.com" className="text-primary-foreground">
-                                        privacy@discord-themes.com
-                                    </a>
-                                    .
-                                </p>
+                                <Card className="border-border/40">
+                                    <CardContent className="p-8">
+                                        <h2 className="text-2xl font-semibold mb-6">Data Protection</h2>
+                                        <p className="text-muted-foreground leading-relaxed">
+                                            We implement industry-standard security measures to protect your personal information. Your data is stored securely using encryption and is only accessible to authorized personnel for maintenance and support purposes.
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            </section>
+
+                            <section>
+                                <Card className="border-border/40">
+                                    <CardContent className="p-8">
+                                        <h2 className="text-2xl font-semibold mb-6">Your Rights</h2>
+                                        <p className="text-muted-foreground leading-relaxed">
+                                            You have complete control over your personal information. You can request access to, correction of, or deletion of your data at any time. To manage your data, visit your Account Settings accessible via the profile menu. 
+                                        </p>
+                                        <p className="text-muted-foreground mt-4 leading-relaxed">
+                                            If you need assistance or cannot access your account, contact us at{" "}
+                                            <a 
+                                                href="mailto:privacy@equicord.org" 
+                                                className="text-primary hover:underline font-medium"
+                                            >
+                                                privacy@equicord.org
+                                            </a>.
+                                        </p>
+                                    </CardContent>
+                                </Card>
                             </section>
                         </div>
-                        <hr />
-                        <div className="container mt-4">
-                            <Card className="p-6 mb-6">
-                                <CardContent className="p-0 space-y-4">
-                                    <p className="text-muted-foreground">Previous Privacy Policies will show up here.</p>
+
+                        <div className="border-t border-border/40 pt-8">
+                            <Card className="border-border/30">
+                                <CardContent className="p-6">
+                                    <h3 className="text-lg font-semibold mb-3">Privacy Policy History</h3>
+                                    <p className="text-muted-foreground text-sm">
+                                        Previous versions of our Privacy Policy will be archived and displayed here for transparency.
+                                    </p>
                                 </CardContent>
                             </Card>
                         </div>

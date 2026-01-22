@@ -1,5 +1,3 @@
-"use cache";
-
 import clientPromise from "@utils/db";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -14,7 +12,10 @@ export default async function GET(req: NextApiRequest, res: NextApiResponse) {
 
     const themes = await themesCollection.find({}, { projection: { _id: 0 } }).toArray();
 
-    res.setHeader("Cache-Control", "public, max-age=1200");
+    
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
     res.setHeader("Content-Type", "application/json");
     res.status(200).json(themes);
 }

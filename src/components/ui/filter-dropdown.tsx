@@ -44,47 +44,76 @@ export function FilterDropdown({ options, onChange, className, label = "Filter" 
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={open} aria-label={`Select ${label.toLowerCase()}`} className={cn("w-full justify-between min-h-[44px]", className)}>
+                <Button 
+                    variant="outline" 
+                    role="combobox" 
+                    aria-expanded={open} 
+                    aria-label={`Select ${label.toLowerCase()}`} 
+                    className={cn("w-full justify-between h-12 bg-card border-border hover:bg-card hover:border-primary text-foreground transition-all duration-200 rounded-2xl", className)}
+                >
                     <span className="flex items-center gap-2 max-w-full overflow-hidden text-ellipsis">
                         {selectedValues.length > 0 ? (
-                            <div className="flex items-center gap-1 overflow-hidden whitespace-nowrap text-ellipsis">
+                            <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap text-ellipsis">
                                 {selectedValues.slice(0, 2).map((value) => {
                                     const option = options.find((opt) => opt.value === value);
                                     return (
-                                        <Badge key={value} className="font-normal truncate text-ellipsis">
+                                        <Badge key={value} variant="secondary" className="font-medium text-xs px-2 py-1 rounded-lg">
                                             {option?.label || value}
                                         </Badge>
                                     );
                                 })}
                                 {selectedValues.length > 2 && (
-                                    <Badge className="font-normal">
+                                    <Badge variant="secondary" className="font-medium text-xs px-2 py-1 rounded-lg">
                                         +{selectedValues.length - 2}
                                     </Badge>
                                 )}
                             </div>
                         ) : (
-                            label
+                            <span className="text-muted-foreground">{label}</span>
                         )}
                     </span>
-                    <div className="flex items-center gap-1">
-                        {selectedValues.length > 0 && <X className="h-4 w-4 opacity-50 hover:opacity-100 cursor-pointer" onClick={handleClear} aria-label="Clear selection" />}
-                        <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                    <div className="flex items-center gap-2">
+                        {selectedValues.length > 0 && (
+                            <X 
+                                className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-pointer" 
+                                onClick={handleClear} 
+                                aria-label="Clear selection" 
+                            />
+                        )}
+                        <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
                     </div>
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-full sm:w-[240px] p-0 max-w-[90vw] max-h-[80vh]">
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 border-border/50 bg-background/95 backdrop-blur-md rounded-2xl shadow-lg">
                 <Command>
-                    <CommandInput placeholder={`Search ${label.toLowerCase()}...`} className="h-9" />
-                    <CommandList>
-                        <CommandEmpty className="p-2 text-sm text-gray-500">No {label.toLowerCase()} found.</CommandEmpty>
-                        <CommandGroup className="max-h-[300px] overflow-y-auto">
+                    <CommandInput placeholder={`Search ${label.toLowerCase()}...`} className="h-10 border-b border-border/30" />
+                    <CommandList className="max-h-[320px] overflow-y-auto">
+                        <CommandEmpty className="p-4 text-sm text-muted-foreground">No {label.toLowerCase()} found.</CommandEmpty>
+                        <CommandGroup className="p-2">
                             {options.map((option) => (
-                                <CommandItem key={option.value} value={option.value} onSelect={() => toggleOption(option.value)} className="flex items-center gap-2 px-2 py-2 cursor-pointer">
-                                    <div className="flex items-center gap-2 flex-1">
-                                        <div className={`flex h-5 w-5 items-center justify-center rounded-md border ${selectedValues.includes(option.value) ? "border-gray-600 bg-gray-100" : "border-muted"}`}>{selectedValues.includes(option.value) && <Check className="h-3.5 w-3.5 text-gray-600" />}</div>
+                                <CommandItem 
+                                    key={option.value} 
+                                    value={option.value} 
+                                    onSelect={() => toggleOption(option.value)} 
+                                    className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-transparent hover:border-2 hover:border-primary/30 border-2 border-transparent data-[selected=true]:bg-muted/30 text-foreground hover:text-primary transition-colors"
+                                    data-selected={selectedValues.includes(option.value)}
+                                >
+                                    <div className="flex items-center gap-3 flex-1">
+                                            <div className={cn(
+                                            "flex h-5 w-5 items-center justify-center border-2 transition-colors",
+                                            selectedValues.includes(option.value) 
+                                                ? "border-primary bg-primary text-primary-foreground" 
+                                                : "border-muted-foreground/30 hover:border-primary"
+                                        )}>
+                                            {selectedValues.includes(option.value) && <Check className="h-3.5 w-3.5" />}
+                                        </div>
                                         <div className="flex items-center justify-between w-full">
-                                            <span className="font-medium">{option.label}</span>
-                                            {option.count !== undefined && <span className="text-xs text-muted-foreground ml-2">{option.count}</span>}
+                                            <span className="font-medium text-sm">{option.label}</span>
+                                            {option.count !== undefined && (
+                                                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                                                    {option.count}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </CommandItem>

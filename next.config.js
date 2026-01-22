@@ -1,6 +1,6 @@
 /** @type {import("next").NextConfig} */
 const env = process.env.NODE_ENV;
-const RAW_SERVER = env === "development" ? "literate-engine-rv7579wprjq2px77-4321.app.github.dev" : "discord-themes.com";
+const RAW_SERVER = env === "development" ? "literate-engine-rv7579wprjq2px77-4321.app.github.dev" : "themes.equicord.org";
 
 module.exports = {
     async headers() {
@@ -24,11 +24,11 @@ module.exports = {
                 ]
             },
             {
-                source: "/api/get",
+                source: "/api/get/:path*",
                 headers: [
                     {
                         key: "cache-control",
-                        value: "s-maxage=600, stale-while-revalidate=30"
+                        value: "no-cache, no-store, must-revalidate"
                     }
                 ]
             },
@@ -78,7 +78,7 @@ module.exports = {
             },
             {
                 protocol: "https",
-                hostname: "cdn.discord-themes.com",
+                hostname: "cdn.themes.equicord.org",
                 pathname: "**"
             }
         ]

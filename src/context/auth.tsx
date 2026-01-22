@@ -55,7 +55,8 @@ export function AuthProvider({ children }) {
     const {
         data: themes,
         error: themesError,
-        isLoading: themesLoading
+        isLoading: themesLoading,
+        mutate: mutateThemes
     } = useSWR(
         !isAuthPath ? "/api/themes" : null,
         async () => {
@@ -64,8 +65,9 @@ export function AuthProvider({ children }) {
             return res.json();
         },
         {
-            revalidateOnFocus: false,
-            dedupingInterval: Infinity
+            revalidateOnFocus: true,
+            dedupingInterval: 0,
+            revalidateOnReconnect: true
         }
     );
 
@@ -79,7 +81,8 @@ export function AuthProvider({ children }) {
                 isLoading: authLoading || themesLoading,
                 error: authError || themesError,
                 themes,
-                mutate
+                mutate,
+                mutateThemes
             }}
         >
             {children}

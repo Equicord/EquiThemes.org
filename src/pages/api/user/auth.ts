@@ -93,7 +93,7 @@ export default async function GET(req: NextApiRequest, res: NextApiResponse) {
             client_secret: process.env.AUTH_DISCORD_SECRET,
             code: code as string,
             grant_type: "authorization_code",
-            redirect_uri: process.env.NODE_ENV === "production" ? (!callback ? "https://discord-themes.com/api/user/auth" : "https://discord-themes.com/api/user/auth?callback=/auth/callback") : "http://localhost:4321/api/user/auth?callback=/auth/callback",
+            redirect_uri: process.env.NODE_ENV === "production" ? (!callback ? "https://themes.equicord.org/api/user/auth" : "https://themes.equicord.org/api/user/auth?callback=/auth/callback") : "http://localhost:4321/api/user/auth?callback=/auth/callback",
             scope: "identify,connections"
         }).toString()
     });
@@ -257,7 +257,7 @@ export default async function GET(req: NextApiRequest, res: NextApiResponse) {
     res.setHeader("Content-Type", "application/json");
 
     if (!authKey) {
-        res.status(500).json({ status: 500, message: "Failed to generate a user token, if you think that this is a bug feel free to open an issue at https://github.com/faf4a/themesApi", error: "MISSING OAUTH2 TOKEN" });
+        res.status(500).json({ status: 500, message: "Failed to generate a user token, if you think that this is a bug feel free to open an issue at https://github.com/Equicord/themesApi", error: "MISSING OAUTH2 TOKEN" });
     } else {
         if (callback) res.redirect((callback as string) + `?token=${authKey}`);
         else res.status(200).json({ status: 200, token: authKey, user: { id: user.id, avatar: user.avatar, preferredColor: user.banner_color, githubAccount } });

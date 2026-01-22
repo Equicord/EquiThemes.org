@@ -82,17 +82,17 @@ export function ThemeCard({ theme, likedThemes, className, noFooter = false, dis
     const relativeTime = timeSince(new Date(lastUpdated));
 
     return (
-        <Card className={cn("group overflow-hidden flex flex-col justify-between h-full transition-all hover:translate-y-[-1px] border-border/40 bg-card", className)}>
+        <Card className={cn("group overflow-hidden flex flex-col h-full transition-all duration-200 hover:shadow-lg hover:-translate-y-1 border-border/40 bg-card/50 backdrop-blur-sm", className)}>
             <Link href={`/theme/${Number(theme.id)}`} className="h-full flex flex-col">
                 {diagonal ? (
                     <div className="flex">
                         <div className="w-1/2 relative" onMouseLeave={handleMouseLeave}>
-                            <div className="aspect-[16/9] overflow-hidden bg-muted relative">
-                                <Image unoptimized draggable={false} priority width={854} height={480} src={theme.thumbnail_url} alt={theme.name} className="absolute inset-0 h-full w-full object-cover select-none" />
+                            <div className="aspect-[16/9] overflow-hidden bg-muted/20 relative rounded-2xl">
+                                <Image unoptimized draggable={false} priority width={854} height={480} src={theme.thumbnail_url} alt={theme.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 select-none rounded-2xl" />
                             </div>
-                            <div className="absolute top-2 left-2 z-2 flex flex-wrap gap-1.5">
+                            <div className="absolute top-3 left-3 z-2 flex flex-wrap gap-2">
                                 {theme.tags?.slice(0, 3).map((tag) => (
-                                    <Button key={tag} variant="outline" size="sm" className="text-[10px] h-6 px-2 bg-card/80 backdrop-blur-sm" onClick={(e) => e.preventDefault()}>
+                                    <Button key={tag} variant="outline" size="sm" className="text-xs h-7 px-3 bg-background/90 backdrop-blur-md border-border/50 hover:bg-background/60 hover:border-border/80 rounded-2xl" onClick={(e) => e.preventDefault()}>
                                         {tag}
                                     </Button>
                                 ))}
@@ -100,15 +100,15 @@ export function ThemeCard({ theme, likedThemes, className, noFooter = false, dis
                                     <Popover open={isOpen} onOpenChange={setIsOpen}>
                                         <div onMouseEnter={handleMouseEnter}>
                                             <PopoverTrigger asChild>
-                                                <Button variant="outline" size="sm" onClick={(e) => e.preventDefault()} className="text-[10px] h-6 px-2 bg-card/80 backdrop-blur-sm">
+                                                <Button variant="outline" size="sm" onClick={(e) => e.preventDefault()} className="text-xs h-7 px-3 bg-background/90 backdrop-blur-md border-border/50 hover:bg-background/60 hover:border-border/80">
                                                     +{theme.tags.length - 3}
                                                 </Button>
                                             </PopoverTrigger>
                                         </div>
-                                        <PopoverContent className="w-auto p-2 border-border/40 bg-card">
-                                            <div className="flex flex-wrap gap-1.5">
+                                        <PopoverContent className="w-auto p-3 border-border/50 bg-background/95 backdrop-blur-md">
+                                            <div className="flex flex-wrap gap-2">
                                                 {theme.tags.slice(3).map((tag) => (
-                                                    <Button key={tag} variant="outline" size="sm" className="text-[10px] h-6 px-2" onClick={(e) => e.preventDefault()}>
+                                                    <Button key={tag} variant="outline" size="sm" className="text-xs h-7 px-3 hover:bg-background/60 hover:border-border/80" onClick={(e) => e.preventDefault()}>
                                                         {tag}
                                                     </Button>
                                                 ))}
@@ -118,23 +118,21 @@ export function ThemeCard({ theme, likedThemes, className, noFooter = false, dis
                                 )}
                             </div>
                         </div>
-                        <div className="w-1/2 p-4 flex flex-col justify-between">
+                        <div className="w-1/2 p-5 flex flex-col justify-between">
                             <div>
-                                <h3 className="text-base font-medium tracking-tight text-foreground">{theme.name}</h3>
-                                <ReactMarkdown className="description text-sm text-muted-foreground mt-2 line-clamp-2" remarkPlugins={[remarkGfm]}>
+                                <h3 className="text-lg font-semibold tracking-tight text-primary mb-2">{theme.name}</h3>
+                                <ReactMarkdown className="description text-sm text-foreground leading-relaxed line-clamp-3" remarkPlugins={[remarkGfm]}>
                                     {theme.description}
                                 </ReactMarkdown>
                             </div>
-                            <div className="flex flex-col">
+                            <div className="flex flex-col mt-4">
                                 <div className="flex justify-between items-center">
-                                    <div className="text-sm text-muted-foreground flex items-center gap-1.5">
+                                    <div className="text-xs text-muted-foreground flex items-center gap-2">
                                         <TooltipProvider>
                                             <Tooltip>
-                                                <TooltipTrigger className="text-sm text-muted-foreground flex items-center gap-1.5 hover:text-foreground transition-colors">
-                                                    <Clock className="h-4 w-4" />
-                                                    <span>
-                                                        Last Updated: <b>{relativeTime}</b>
-                                                    </span>
+                                                <TooltipTrigger className="text-xs text-muted-foreground flex items-center gap-2 hover:text-foreground transition-colors">
+                                                    <Clock className="h-3.5 w-3.5" />
+                                                    <span>{relativeTime}</span>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
                                                     <p>Updated on {new Date(lastUpdated).toLocaleDateString()}</p>
@@ -147,26 +145,26 @@ export function ThemeCard({ theme, likedThemes, className, noFooter = false, dis
                             {!noFooter && (
                                 <div className="mt-4 flex flex-col">
                                     <div className="flex justify-between items-center">
-                                        <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
-                                            <div className={cn("flex items-center", isLiked && "text-primary")}>
-                                                <Heart className={cn("h-4 w-4 mr-2", isLiked && "fill-current")} />
+                                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                            <div className={cn("flex items-center gap-1", isLiked && "text-red-500")}>
+                                                <Heart className={cn("h-4 w-4", isLiked && "fill-current")} />
                                                 <span>{theme.likes}</span>
                                             </div>
-                                            <div className="flex items-center ml-2">
-                                                <Download className="h-4 w-4 mr-2" />
+                                            <div className="flex items-center gap-1">
+                                                <Download className="h-4 w-4" />
                                                 <span>{theme?.downloads ?? 0}</span>
                                             </div>
-                                        </Button>
+                                        </div>
                                         {!disableDownloads && (
-                                            <Button disabled={isDownloaded} size="sm" className="bg-primary hover:bg-primary/90" onClick={handleDownload}>
+                                            <Button disabled={isDownloaded} size="sm" className="h-8" onClick={handleDownload}>
                                                 {isDownloaded ? (
                                                     <>
-                                                        <Check className="mr-2 h-4 w-4" />
+                                                        <Check className="mr-1.5 h-3.5 w-3.5" />
                                                         Downloaded
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <Download className="mr-2 h-4 w-4" />
+                                                        <Download className="mr-1.5 h-3.5 w-3.5" />
                                                         Download
                                                     </>
                                                 )}
@@ -180,12 +178,12 @@ export function ThemeCard({ theme, likedThemes, className, noFooter = false, dis
                 ) : (
                     <>
                         <CardHeader className="p-0 relative" onMouseLeave={handleMouseLeave}>
-                            <div className="aspect-[16/9] overflow-hidden bg-muted relative">
-                                <Image unoptimized draggable={false} priority width={854} height={480} src={theme.thumbnail_url} alt={theme.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 select-none" />
+                            <div className="aspect-[16/9] overflow-hidden bg-muted/20 relative rounded-t-2xl">
+                                <Image unoptimized draggable={false} priority width={854} height={480} src={theme.thumbnail_url} alt={theme.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 select-none" />
                             </div>
-                            <div className="absolute bottom-2 left-2 z-2 flex flex-wrap gap-1.5">
+                            <div className="absolute bottom-3 left-3 z-2 flex flex-wrap gap-2">
                                 {theme.tags?.slice(0, 3).map((tag) => (
-                                    <Button key={tag} variant="outline" size="sm" className="text-[10px] h-6 px-2 bg-card/80 backdrop-blur-sm" onClick={(e) => e.preventDefault()}>
+                                    <Button key={tag} variant="outline" size="sm" className="text-xs h-7 px-3 bg-background/90 backdrop-blur-md border-border/50 hover:bg-background/60 hover:border-border/80" onClick={(e) => e.preventDefault()}>
                                         {tag}
                                     </Button>
                                 ))}
@@ -193,15 +191,15 @@ export function ThemeCard({ theme, likedThemes, className, noFooter = false, dis
                                     <Popover open={isOpen} onOpenChange={setIsOpen}>
                                         <div onMouseEnter={handleMouseEnter}>
                                             <PopoverTrigger asChild>
-                                                <Button variant="outline" size="sm" onClick={(e) => e.preventDefault()} className="text-[10px] h-6 px-2 bg-card/80 backdrop-blur-sm">
+                                                <Button variant="outline" size="sm" onClick={(e) => e.preventDefault()} className="text-xs h-7 px-3 bg-background/90 backdrop-blur-md border-border/50 hover:bg-background/60 hover:border-border/80">
                                                     +{theme.tags.length - 3}
                                                 </Button>
                                             </PopoverTrigger>
                                         </div>
-                                        <PopoverContent className="w-auto p-2 border-border/40 bg-card">
-                                            <div className="flex flex-wrap gap-1.5">
+                                        <PopoverContent className="w-auto p-3 border-border/50 bg-background/95 backdrop-blur-md">
+                                            <div className="flex flex-wrap gap-2">
                                                 {theme.tags.slice(3).map((tag) => (
-                                                    <Button key={tag} variant="outline" size="sm" className="text-[10px] h-6 px-2" onClick={(e) => e.preventDefault()}>
+                                                    <Button key={tag} variant="outline" size="sm" className="text-xs h-7 px-3 hover:bg-background/60 hover:border-border/80" onClick={(e) => e.preventDefault()}>
                                                         {tag}
                                                     </Button>
                                                 ))}
@@ -211,35 +209,35 @@ export function ThemeCard({ theme, likedThemes, className, noFooter = false, dis
                                 )}
                             </div>
                         </CardHeader>
-                        <CardContent className="p-4 flex-grow">
-                            <h3 className="text-base font-medium tracking-tight text-foreground">{theme.name}</h3>
-                            <ReactMarkdown className="description line-clamp-3 text-sm text-muted-foreground mt-1" remarkPlugins={[remarkGfm]}>
+                        <CardContent className="p-5 flex-grow">
+                            <h3 className="text-lg font-semibold tracking-tight text-primary mb-2">{theme.name}</h3>
+                            <ReactMarkdown className="description line-clamp-3 text-sm text-foreground leading-relaxed" remarkPlugins={[remarkGfm]}>
                                 {theme.description}
                             </ReactMarkdown>
                         </CardContent>
                         {!noFooter && (
-                            <CardFooter className="p-4 pt-0 mt-auto">
+                            <CardFooter className="p-5 pt-0 mt-auto">
                                 <div className="flex justify-between items-center w-full">
-                                    <Button variant="ghost" size="sm" className="gap-1.5 hover:bg-muted text-muted-foreground">
-                                        <div className={cn("flex items-center", isLiked && "text-primary")}>
-                                            <Heart className={cn("h-4 w-4 mr-2", isLiked && "fill-current")} />
+                                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                        <div className={cn("flex items-center gap-1", isLiked && "text-red-500")}>
+                                            <Heart className={cn("h-4 w-4", isLiked && "fill-current")} />
                                             <span>{theme.likes}</span>
                                         </div>
-                                        <div className="flex items-center ml-2">
-                                            <Download className="h-4 w-4 mr-2" />
+                                        <div className="flex items-center gap-1">
+                                            <Download className="h-4 w-4" />
                                             <span>{theme?.downloads ?? 0}</span>
                                         </div>
-                                    </Button>
+                                    </div>
                                     {!disableDownloads && (
-                                        <Button disabled={isDownloaded} size="sm" className="bg-primary hover:bg-primary/90" onClick={handleDownload}>
+                                        <Button disabled={isDownloaded} size="sm" className="h-8" onClick={handleDownload}>
                                             {isDownloaded ? (
                                                 <>
-                                                    <Check className="mr-2 h-4 w-4" />
+                                                    <Check className="mr-1.5 h-3.5 w-3.5" />
                                                     Downloaded
                                                 </>
                                             ) : (
                                                 <>
-                                                    <Download className="mr-2 h-4 w-4" />
+                                                    <Download className="mr-1.5 h-3.5 w-3.5" />
                                                     Download
                                                 </>
                                             )}

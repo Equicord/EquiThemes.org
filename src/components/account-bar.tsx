@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
-import { LogOutIcon, Settings, Shield, UserIcon, Lock, Columns3Icon } from "lucide-react";
+import { LogOutIcon, Settings, Shield, UserIcon, Lock, Columns3Icon, Plus, ExternalLinkIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@components/ui/dropdown-menu";
 import { cn } from "@lib/utils";
 import { deleteCookie, getCookie } from "@utils/cookies";
@@ -8,6 +9,9 @@ import { type UserData } from "@types";
 import { useWebContext } from "@context/auth";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { DiscordIcon } from "@utils/icons";
+import { NotificationsBell } from "./notifications-bell";
+
 interface AccountBarProps {
     className?: string;
 }
@@ -16,6 +20,8 @@ export function AccountBar({ className }: AccountBarProps) {
     const [user, setUser] = useState<UserData | object>({});
     const [isValid, setValid] = useState(null);
     const { authorizedUser, isAuthenticated, isLoading } = useWebContext();
+    const router = useRouter();
+    const isThemePage = router.pathname === "/";
 
     useEffect(() => {
         if (isLoading) return;
@@ -42,8 +48,42 @@ export function AccountBar({ className }: AccountBarProps) {
         window.location.href = "/";
     };
 
+    const handleSubmit = () => {
+        if (isValid) {
+            window.location.href = "/theme/submit";
+        } else {
+            window.location.href = "/auth/login";
+        }
+    };
+
     return (
-        <div>
+        <div className="flex items-center gap-3">
+            {isThemePage && (
+                <>
+                    <Button variant="outline" size="sm" className="hidden md:flex items-center gap-2 h-9" onClick={() => window.open("https://equicord.org/", "_blank")}>
+                        Install Equicord
+                        <ExternalLinkIcon className="h-4 w-4" />
+                    </Button>
+                    <Button disabled={isLoading} size="sm" className="h-9 flex items-center gap-2" onClick={handleSubmit}>
+                        {isValid ? (
+                            <>
+                                <Plus className="h-4 w-4" />
+                                <span className="hidden md:inline">Submit Theme</span>
+                            </>
+                        ) : (
+                            <>
+                                <DiscordIcon className="h-4 w-4 fill-current" />
+                                <span className="hidden md:inline">Connect</span>
+                            </>
+                        )}
+                    </Button>
+                </>
+            )}
+
+            {isValid && user && (
+                <NotificationsBell />
+            )}
+
             {isValid && user ? (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -103,9 +143,10 @@ export function AccountBar({ className }: AccountBarProps) {
                             window.location.href = "/auth/login";
                         }}
                         disabled={isLoading}
-                        className={cn("flex items-center gap-2 hover:opacity-90 transition-all", className)}
+                        size="sm"
+                        className="h-9"
                     >
-                        Login with Discord
+                        Login
                     </Button>
                 )
             )}

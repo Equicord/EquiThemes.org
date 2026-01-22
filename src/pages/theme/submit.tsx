@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRouter } from "next/router";
 import { type FocusEvent, useEffect, useRef, useState } from "react";
@@ -43,6 +43,8 @@ export default function SubmitPage() {
     const [submitting, setSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [shakeError, setShakeError] = useState(false);
+    const [isBanned, setIsBanned] = useState(false);
+    const [notifications, setNotifications] = useState<any[]>([]);
     const { authorizedUser, isAuthenticated, isLoading } = useWebContext();
 
     const isValidImageUrl = (url: string) => {
@@ -57,8 +59,32 @@ export default function SubmitPage() {
         if (isAuthenticated === false && token) {
             deleteCookie("_dtoken");
             router.push("/");
+            return;
         }
-    }, [router, isAuthenticated]);
+
+        // Check if user is banned and fetch notifications
+        if (isAuthenticated && authorizedUser) {
+            setIsBanned(authorizedUser.bannedFromSubmissions || false);
+
+            const fetchNotifications = async () => {
+                try {
+                    const response = await fetch("/api/user/notifications", {
+                        headers: {
+                            Authorization: `Bearer ${getCookie("_dtoken")}`
+                        }
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        setNotifications(data);
+                    }
+                } catch (error) {
+                    console.error("Failed to fetch notifications:", error);
+                }
+            };
+
+            fetchNotifications();
+        }
+    }, [router, isAuthenticated, authorizedUser]);
 
     useEffect(() => {
         const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -87,8 +113,6 @@ export default function SubmitPage() {
         if (step === 4) {
             if (!data.sourceLink.trim()) {
                 newErrors.sourceLink = "Source link is required.";
-            } else if (!isValidSourceUrl(data.sourceLink.trim())) {
-                newErrors.sourceLink = "Invalid source link.";
             }
         }
         return newErrors;
@@ -176,9 +200,10 @@ export default function SubmitPage() {
             router.push(`/theme/submitted/${data.id}`);
         } else {
             setSubmitting(false);
+            const data = await response.json();
             toast({
                 title: "Failed to submit",
-                description: "An error occurred while submitting your theme. Please try again later.",
+                description: data.message || "An error occurred while submitting your theme. Please try again later.",
                 variant: "destructive"
             });
         }
@@ -205,7 +230,6 @@ export default function SubmitPage() {
 
     const isValidSourceUrl = (url: string) => {
         if (!url) return true;
-        return url.includes("github.com/") || url.includes("github.io/") || url.includes("gitlab.com/") || url.includes("raw.githubusercontent.com/");
     };
 
     const validateDiscordUsers = async (userIds: string[]) => {
@@ -348,221 +372,291 @@ export default function SubmitPage() {
         <>
             <Head>
                 <meta name="viewport" content="initial-scale=1, width=device-width" />
-                <meta name="keywords" content="discord themes, custom discord themes, discord css, betterdiscord themes, vencord themes, discord customization, theme submission" />
-                <meta name="theme-color" content="#5865F2" />
+                <meta name="keywords" content="discord themes, custom discord themes, discord css, Vencord themes, vencord themes, discord customization, theme submission" />
+                <meta name="theme-color" content="#1a1b26" />
                 <meta name="application-name" content="Theme Library" />
-                <meta name="description" content="Submit your custom Discord theme to our library. Share your creative Discord CSS themes with the community for BetterDiscord, Vencord and other Discord mods." />
+                <meta name="description" content="Submit your custom Discord theme to our library. Share your creative Discord CSS themes with the community for Vencord, Vencord and other Discord mods." />
                 <meta property="og:type" content="website" />
-                <meta property="og:url" content="https://discord-themes.com/" />
+                <meta property="og:url" content="https://themes.equicord.org/" />
                 <meta property="og:title" content="Submit Your Discord Theme | Theme Library" />
-                <meta property="og:description" content="Share your custom Discord theme with our community. Submit your creative Discord CSS themes for BetterDiscord, Vencord and other Discord mods." />
+                <meta property="og:description" content="Share your custom Discord theme with our community. Submit your creative Discord CSS themes for Vencord, Vencord and other Discord mods." />
                 <title>Submit Your Discord Theme | Theme Library</title>
                 <link rel="icon" href="/favicon.ico" />
             </Head>
-            <div className="min-h-screen bg-background">
+            <div className="min-h-screen">
                 {!isLoading &&
                     (isAuthenticated ? (
-                        <div className="container mx-auto px-2 md:px-6 py-10">
-                            <div className="flex flex-col md:flex-row gap-8 max-w-5xl mx-auto">
-                                {/* Sticky Progress Sidebar */}
-                                <aside className="w-full md:w-72 mb-6 md:mb-0 md:sticky md:top-8 h-fit">
-                                    <div className="bg-card/80 border border-border rounded-2xl shadow-md p-6">
-                                        <h2 className="font-semibold mb-4 text-lg">Progress</h2>
-                                        <Progress value={progress} className="h-2 mb-6" />
-                                        <ol className="space-y-4">
+                        <div className="container mx-auto px-2 md:px-6 py-10 max-w-6xl">
+                            
+                            {isBanned && (
+                                <Alert className="mb-6 border-red-600/30 bg-red-500/10">
+                                    <AlertDescription className="text-red-600">
+                                        <span className="font-semibold">You have been banned from submitting themes.</span>
+                                        {authorizedUser?.banReason && <span> Reason: {authorizedUser.banReason}</span>}
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+
+                            <div className="mb-10">
+                                <h1 className="text-4xl font-bold tracking-tight mb-3">Submit Your Theme</h1>
+                                <p className="text-lg text-muted-foreground">Share your creative Discord theme with the community. Follow the steps below to submit your theme.</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                                
+                                <aside className="lg:col-span-1">
+                                    <div className="sticky top-8 bg-card/80 border border-border rounded-2xl shadow-md p-6">
+                                        <h2 className="font-semibold mb-6 text-lg">Progress</h2>
+                                        <Progress value={progress} className="h-2 mb-8" />
+                                        <ol className="space-y-3">
                                             {["Title", "Description", "Cover Image", "Attribution"].map((label, index) => (
-                                                <li key={label} className={`flex items-center gap-3 ${step === index + 1 ? "text-primary font-semibold" : "text-muted-foreground"}`}>
-                                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-base font-bold ${step === index + 1 ? "bg-primary text-primary-foreground" : "bg-muted"}`}>{index + 1}</div>
-                                                    <span>{label}</span>
+                                                <li key={label}>
+                                                    <div className={`flex items-center gap-3 ${step === index + 1 ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 transition-all ${step >= index + 1 ? "bg-primary text-primary-foreground" : "bg-muted"}`}>{index + 1}</div>
+                                                        <span className="text-sm">{label}</span>
+                                                    </div>
                                                 </li>
                                             ))}
                                         </ol>
                                     </div>
                                 </aside>
 
-                                {/* Main Form Card */}
-                                <main className="flex-1">
-                                    <Card className="p-8 bg-card/90 border border-border rounded-2xl shadow-lg">
-                                        {/* Stepper Header */}
-                                        <div className="mb-8 flex flex-col gap-2">
-                                            <h1 className="text-3xl font-bold tracking-tight">Submit Your Theme</h1>
-                                            <p className="text-muted-foreground text-base">Share your custom Discord theme with the community. Please fill out all steps below.</p>
-                                        </div>
-                                        {/* Step Content */}
-                                        <div className="space-y-8">
-                                            {step === 1 && (
-                                                <section className="space-y-4">
-                                                    <h2 className="text-2xl font-semibold">Theme Title</h2>
-                                                    <p className="text-muted-foreground">Choose a clear and descriptive title for your theme.</p>
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="title">Title</Label>
-                                                        <Input id="title" value={formData.title} onChange={(e) => updateFormData("title", e.target.value)} placeholder="Enter theme title..." />
-                                                        {errors.title && (
-                                                            <Alert className={`mt-2 border-red-600/20 bg-red-500/10 ${shakeError ? "shake" : ""}`}>
-                                                                <AlertDescription className="text-sm">{errors.title}</AlertDescription>
-                                                            </Alert>
-                                                        )}
-                                                    </div>
-                                                </section>
-                                            )}
-                                            {step === 2 && (
-                                                <section className="space-y-4">
-                                                    <h2 className="text-2xl font-semibold">Description</h2>
-                                                    <p className="text-muted-foreground">Provide a brief description of your theme, this will be shown on the front-page cards.</p>
-                                                    <MarkdownInput defaultContent={formData.description} onChange={(value) => updateFormData("description", value)} lines={3} />
-                                                    {errors.description && (
-                                                        <Alert className={`mt-2 border-red-600/20 bg-red-500/10 ${shakeError ? "shake" : ""}`}>
-                                                            <AlertDescription className="text-sm">{errors.description}</AlertDescription>
-                                                        </Alert>
-                                                    )}
-                                                </section>
-                                            )}
-                                            {step === 3 && (
-                                                <section className="space-y-4">
-                                                    <h2 className="text-2xl font-semibold">Theme Preview</h2>
-                                                    <p className="text-muted-foreground">Upload a preview image of your theme. If you don't have one, generate a preview by using the "I don't have a Picture" button.</p>
-                                                    <div className="space-y-6">
-                                                        <div className={`border-2 ${dragActive ? "border-primary" : "border-input"} hover:border-primary transition-colors duration-200 border-dashed rounded-lg p-8 text-center bg-muted/30`}
-                                                            onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
-                                                            <Input type="file" accept="image/png, image/gif, image/webp" onChange={(e) => handleFileChange(e.target.files[0])} className="hidden" id="file-upload" />
-                                                            <Label htmlFor="file-upload" className="flex flex-col select-none items-center justify-center cursor-pointer">
-                                                                <Upload className="w-12 h-12 text-muted-foreground mb-4" />
-                                                                <p className="text-lg font-medium mb-2">Drag and drop a file here, or click to select</p>
-                                                                <p className="text-sm text-muted-foreground">Supports PNG, GIF, WEBP</p>
-                                                            </Label>
+                                
+                                <main className="lg:col-span-3">
+                                    {isBanned ? (
+                                        <Card className="p-8 bg-card/90 border border-border rounded-2xl shadow-lg">
+                                            <div className="flex flex-col items-center justify-center py-12 text-center">
+                                                <div className="text-red-500 text-5xl mb-4">🚫</div>
+                                                <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
+                                                <p className="text-muted-foreground mb-4">You are currently banned from submitting themes.</p>
+                                                {authorizedUser?.banReason && <p className="text-sm text-red-600 mb-6">Reason: {authorizedUser.banReason}</p>}
+                                                <Button variant="outline" onClick={() => router.push("/")}>
+                                                    Return to Home
+                                                </Button>
+                                            </div>
+                                        </Card>
+                                    ) : (
+                                        <>
+                                            <div className="space-y-8">
+                                                
+                                                {step === 1 && (
+                                                    <Card className="p-8 bg-card/90 border border-border rounded-2xl shadow-lg">
+                                                        <div className="mb-8">
+                                                            <h2 className="text-2xl font-bold mb-2">Theme Title</h2>
+                                                            <p className="text-muted-foreground">Give your theme a clear, descriptive name that helps others find it.</p>
                                                         </div>
-                                                        {formData.file && (
-                                                            <div className="mt-4">
-                                                                <img draggable={false} width={854} height={480} src={formData.file} alt="Uploaded preview" className="rounded-lg w-full h-auto object-cover border border-border" />
+                                                        <div className="space-y-4">
+                                                            <div className="space-y-2">
+                                                                <Label htmlFor="title" className="text-base font-medium">
+                                                                    Title *
+                                                                </Label>
+                                                                <Input id="title" value={formData.title} onChange={(e) => updateFormData("title", e.target.value)} placeholder="e.g., Dark Midnight Theme, Ocean Breeze, Cyberpunk Vibes..." className="text-base h-12" />
+                                                                {errors.title && (
+                                                                    <Alert className={`mt-2 border-red-600/20 bg-red-500/10 ${shakeError ? "shake" : ""}`}>
+                                                                        <AlertDescription className="text-sm">{errors.title}</AlertDescription>
+                                                                    </Alert>
+                                                                )}
                                                             </div>
-                                                        )}
-                                                        <div className="flex flex-col gap-2">
-                                                            <div className="flex items-center space-x-2">
-                                                                <ImageIcon className="w-5 h-5 text-muted-foreground" />
-                                                                <Input
-                                                                    value={formData.fileUrl}
-                                                                    onChange={(e) => {
-                                                                        setUrlError(false);
-                                                                        updateFormData("fileUrl", e.target.value);
-                                                                    }}
-                                                                    placeholder="Or enter image URL..."
-                                                                    className={`flex-1 ${urlError ? "border-red-500" : ""}`}
-                                                                />
-                                                                <Button
-                                                                    variant="outline"
-                                                                    onClick={() => {
-                                                                        if (isValidImageUrl(formData.fileUrl)) {
-                                                                            setUrlError(false);
-                                                                            updateFormData("file", formData.fileUrl);
-                                                                        } else {
-                                                                            setUrlError(true);
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    Load
-                                                                </Button>
-                                                            </div>
-                                                            {urlError && (
+                                                        </div>
+                                                    </Card>
+                                                )}
+
+                                                
+                                                {step === 2 && (
+                                                    <Card className="p-8 bg-card/90 border border-border rounded-2xl shadow-lg">
+                                                        <div className="mb-8">
+                                                            <h2 className="text-2xl font-bold mb-2">Theme Description</h2>
+                                                            <p className="text-muted-foreground">Write a compelling description about your theme. This will appear on the theme cards across the site.</p>
+                                                        </div>
+                                                        <div className="space-y-4">
+                                                            <MarkdownInput defaultContent={formData.description} onChange={(value) => updateFormData("description", value)} lines={5} />
+                                                            {errors.description && (
                                                                 <Alert className={`mt-2 border-red-600/20 bg-red-500/10 ${shakeError ? "shake" : ""}`}>
-                                                                    <AlertDescription className="text-sm">Please enter a valid image URL (PNG, GIF, WEBP, JPG)</AlertDescription>
+                                                                    <AlertDescription className="text-sm">{errors.description}</AlertDescription>
                                                                 </Alert>
                                                             )}
                                                         </div>
-                                                        <Button variant="outline" onClick={() => setShowPreviewModal(true)} className="mt-4">
-                                                            I don't have a Picture
-                                                        </Button>
-                                                        <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
-                                                            <DialogContent>
-                                                                <DialogHeader>
-                                                                    <DialogTitle>Generate Theme Preview</DialogTitle>
-                                                                </DialogHeader>
-                                                                <p className="text-muted-foreground">Enter the URL of your theme to generate a preview image. Try to use GitHub raw URLs</p>
-                                                                <div className="space-y-4">
-                                                                    <Input placeholder="Enter theme URL..." value={previewUrl} onChange={(e) => setPreviewUrl(e.target.value)} />
-                                                                    <Button onClick={() => fetchPreview(previewUrl)} disabled={isLoadingPreview || !previewUrl || !(previewUrl.startsWith("/api/") || previewUrl.startsWith("https://") || previewUrl.startsWith("http://"))} className="w-full">
-                                                                        {isLoadingPreview ? (
-                                                                            <>
-                                                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                                                Generating Preview...
-                                                                            </>
-                                                                        ) : (
-                                                                            "Generate Preview"
-                                                                        )}
+                                                    </Card>
+                                                )}
+
+                                                
+                                                {step === 3 && (
+                                                    <Card className="p-8 bg-card/90 border border-border rounded-2xl shadow-lg">
+                                                        <div className="mb-8">
+                                                            <h2 className="text-2xl font-bold mb-2">Theme Preview Image</h2>
+                                                            <p className="text-muted-foreground">Upload a preview image or generate one from your theme URL. This helps users see what your theme looks like.</p>
+                                                        </div>
+                                                        <div className="space-y-6">
+                                                            
+                                                            {formData.file && (
+                                                                <div className="space-y-2">
+                                                                    <p className="text-sm font-medium text-foreground">Current Preview</p>
+                                                                    <img draggable={false} width={854} height={480} src={formData.file} alt="Uploaded preview" className="rounded-lg w-full h-auto object-cover border border-border" />
+                                                                </div>
+                                                            )}
+
+                                                            
+                                                            <div className="space-y-3">
+                                                                <p className="text-sm font-medium text-foreground">Upload Image</p>
+                                                                <div className={`border-2 ${dragActive ? "border-primary bg-primary/5" : "border-input"} transition-all duration-200 border-dashed rounded-lg p-8 text-center bg-muted/30`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
+                                                                    <Input type="file" accept="image/png, image/gif, image/webp" onChange={(e) => handleFileChange(e.target.files[0])} className="hidden" id="file-upload" />
+                                                                    <Label htmlFor="file-upload" className="flex flex-col select-none items-center justify-center cursor-pointer">
+                                                                        <Upload className="w-10 h-10 text-muted-foreground mb-3" />
+                                                                        <p className="text-base font-medium mb-1">Drag and drop or click to select</p>
+                                                                        <p className="text-sm text-muted-foreground">PNG, GIF, WEBP (Recommended: 854x480px)</p>
+                                                                    </Label>
+                                                                </div>
+                                                            </div>
+
+                                                            
+                                                            <div className="space-y-3">
+                                                                <p className="text-sm font-medium text-foreground">Or Load from URL</p>
+                                                                <div className="flex gap-2">
+                                                                    <Input
+                                                                        value={formData.fileUrl}
+                                                                        onChange={(e) => {
+                                                                            setUrlError(false);
+                                                                            updateFormData("fileUrl", e.target.value);
+                                                                        }}
+                                                                        placeholder="https://example.com/preview.png"
+                                                                        className={`flex-1 h-10 ${urlError ? "border-red-500" : ""}`}
+                                                                    />
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        onClick={() => {
+                                                                            if (isValidImageUrl(formData.fileUrl)) {
+                                                                                setUrlError(false);
+                                                                                updateFormData("file", formData.fileUrl);
+                                                                            } else {
+                                                                                setUrlError(true);
+                                                                            }
+                                                                        }}
+                                                                        className="h-10"
+                                                                    >
+                                                                        Load
                                                                     </Button>
                                                                 </div>
-                                                            </DialogContent>
-                                                        </Dialog>
-                                                    </div>
-                                                    {errors.file && (
-                                                        <Alert className={`mt-2 border-red-600/20 bg-red-500/10 ${shakeError ? "shake" : ""}`}>
-                                                            <AlertDescription className="text-sm">{errors.file}</AlertDescription>
-                                                        </Alert>
-                                                    )}
-                                                </section>
-                                            )}
-                                            {step === 4 && (
-                                                <section className="space-y-4">
-                                                    <h2 className="text-2xl font-semibold">Attribution</h2>
-                                                    <p className="text-muted-foreground">Anyone else that contributed to your theme? List their Discord User ID below! Make sure they used this site before, otherwise only their username will be shown.</p>
-                                                    <div className="space-y-4">
-                                                        <ContributorInputs />
-                                                    </div>
-                                                    <div className="space-y-4 mt-8">
-                                                        <h2 className="text-2xl font-semibold">Source</h2>
-                                                        <p className="text-muted-foreground">
-                                                            Please use the <b>direct link</b> to your theme which contains the full source, this later will be served as a download link for the users.
-                                                        </p>
-                                                        <Alert className="border-yellow-600/20 bg-yellow-500/10">
-                                                            <AlertDescription className="text-sm">
-                                                                Ensure your .css file/snippet has <b>metadata</b> at the top of it
-                                                            </AlertDescription>
-                                                        </Alert>
-                                                        <Input
-                                                            className={`${!validSource ? "border-red-500" : ""}`}
-                                                            value={formData.sourceLink}
-                                                            disabled={submitting}
-                                                            onChange={(e) => {
-                                                                const value = e.target.value;
-                                                                setValidSource(isValidSourceUrl(value));
-                                                                updateFormData("sourceLink", value);
-                                                            }}
-                                                            placeholder="Enter source URL..."
-                                                        />
-                                                        {!validSource && formData.sourceLink && (
-                                                            <Alert className="mt-4 border-yellow-600/20 bg-yellow-500/10">
-                                                                <AlertDescription className="text-sm">Please use GitHub or GitLab for the source link.</AlertDescription>
-                                                            </Alert>
-                                                        )}
-                                                    </div>
-                                                    {errors.sourceLink && (
-                                                        <Alert className={`mt-2 border-red-600/20 bg-red-500/10 ${shakeError ? "shake" : ""}`}>
-                                                            <AlertDescription className="text-sm">{errors.sourceLink}</AlertDescription>
-                                                        </Alert>
-                                                    )}
-                                                </section>
-                                            )}
-                                        </div>
-                                        {/* Stepper Controls */}
-                                        <div className="flex justify-between mt-10">
-                                            <Button variant="outline" onClick={prevStep} disabled={step === 1 || submitting}>
-                                                Previous
-                                            </Button>
-                                            <Button disabled={submitting} onClick={nextStep} className="min-w-[120px]">
-                                                {step === totalSteps ? (
-                                                    submitting ? (
-                                                        <>
-                                                            <LoaderCircleIcon className={`h-4 w-4 mr-2 animate-spin ${submitting ? "text-white" : "text-muted-foreground"}`} />
-                                                            Submitting...
-                                                        </>
-                                                    ) : (
-                                                        "Submit"
-                                                    )
-                                                ) : (
-                                                    "Next Step"
+                                                                {urlError && (
+                                                                    <Alert className={`border-red-600/20 bg-red-500/10 ${shakeError ? "shake" : ""}`}>
+                                                                        <AlertDescription className="text-sm">Please enter a valid image URL (PNG, GIF, WEBP, JPG)</AlertDescription>
+                                                                    </Alert>
+                                                                )}
+                                                            </div>
+
+                                                            
+                                                            <div className="space-y-3 pt-4 border-t border-border">
+                                                                <p className="text-sm font-medium text-foreground">Generate from Theme URL</p>
+                                                                <Button variant="outline" onClick={() => setShowPreviewModal(true)} className="w-full">
+                                                                    Generate Preview from Theme
+                                                                </Button>
+                                                                <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
+                                                                    <DialogContent>
+                                                                        <DialogHeader>
+                                                                            <DialogTitle>Generate Theme Preview</DialogTitle>
+                                                                        </DialogHeader>
+                                                                        <p className="text-sm text-muted-foreground">Enter the URL of your theme file to automatically generate a preview screenshot.</p>
+                                                                        <div className="space-y-4">
+                                                                            <Input placeholder="https://raw.githubusercontent.com/..." value={previewUrl} onChange={(e) => setPreviewUrl(e.target.value)} className="h-10" />
+                                                                            <Button onClick={() => fetchPreview(previewUrl)} disabled={isLoadingPreview || !previewUrl || !(previewUrl.startsWith("/api/") || previewUrl.startsWith("https://") || previewUrl.startsWith("http://"))} className="w-full h-10">
+                                                                                {isLoadingPreview ? (
+                                                                                    <>
+                                                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                                                        Generating Preview...
+                                                                                    </>
+                                                                                ) : (
+                                                                                    "Generate Preview"
+                                                                                )}
+                                                                            </Button>
+                                                                        </div>
+                                                                    </DialogContent>
+                                                                </Dialog>
+                                                            </div>
+
+                                                            {errors.file && (
+                                                                <Alert className={`border-red-600/20 bg-red-500/10 ${shakeError ? "shake" : ""}`}>
+                                                                    <AlertDescription className="text-sm">{errors.file}</AlertDescription>
+                                                                </Alert>
+                                                            )}
+                                                        </div>
+                                                    </Card>
                                                 )}
-                                            </Button>
-                                        </div>
-                                    </Card>
+
+                                                
+                                                {step === 4 && (
+                                                    <div className="space-y-6">
+                                                        
+                                                        <Card className="p-8 bg-card/90 border border-border rounded-2xl shadow-lg">
+                                                            <div className="mb-8">
+                                                                <h2 className="text-2xl font-bold mb-2">Theme Contributors</h2>
+                                                                <p className="text-muted-foreground">Add Discord User IDs of anyone else who contributed to your theme.</p>
+                                                            </div>
+                                                            <div className="space-y-4">
+                                                                <ContributorInputs />
+                                                            </div>
+                                                        </Card>
+
+                                                        
+                                                        <Card className="p-8 bg-card/90 border border-border rounded-2xl shadow-lg">
+                                                            <div className="mb-8">
+                                                                <h2 className="text-2xl font-bold mb-2">Theme Source</h2>
+                                                                <p className="text-muted-foreground">Provide a direct link to your theme source. This will be used as the download link for users.</p>
+                                                            </div>
+                                                            <div className="space-y-4">
+                                                                <Alert className="border-blue-600/20 bg-blue-500/10">
+                                                                    <AlertDescription className="text-sm">
+                                                                        <span className="font-semibold">Requirement:</span> Your CSS file must include metadata at the top (e.g., <code className="bg-black/20 px-1.5 py-0.5 rounded text-xs">/* @name Theme Name */</code>)
+                                                                    </AlertDescription>
+                                                                </Alert>
+                                                                <div className="space-y-2">
+                                                                    <Label htmlFor="source" className="text-base font-medium">
+                                                                        Source URL *
+                                                                    </Label>
+                                                                    <Input
+                                                                        id="source"
+                                                                        className={`h-10 ${!formData.sourceLink ? "border-red-500" : ""}`}
+                                                                        value={formData.sourceLink}
+                                                                        disabled={submitting}
+                                                                        onChange={(e) => {
+                                                                            const value = e.target.value;
+                                                                            setValidSource(isValidSourceUrl(value));
+                                                                            updateFormData("sourceLink", value);
+                                                                        }}
+                                                                        placeholder="https://raw.githubusercontent.com/username/repo/main/theme.css"
+                                                                    />
+                                                                    <p className="text-xs text-muted-foreground">Supported: GitHub, GitLab & custom instances</p>
+                                                                </div>
+                                                                {errors.sourceLink && (
+                                                                    <Alert className={`border-red-600/20 bg-red-500/10 ${shakeError ? "shake" : ""}`}>
+                                                                        <AlertDescription className="text-sm">{errors.sourceLink}</AlertDescription>
+                                                                    </Alert>
+                                                                )}
+                                                            </div>
+                                                        </Card>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="flex justify-between gap-4 mt-10 pt-8 border-t border-border">
+                                                <Button variant="outline" onClick={prevStep} disabled={step === 1 || submitting} className="h-11 px-6">
+                                                    Previous Step
+                                                </Button>
+                                                <Button disabled={submitting} onClick={nextStep} className="h-11 px-8 min-w-[140px]">
+                                                    {step === totalSteps ? (
+                                                        submitting ? (
+                                                            <>
+                                                                <LoaderCircleIcon className="h-4 w-4 mr-2 animate-spin" />
+                                                                Submitting...
+                                                            </>
+                                                        ) : (
+                                                            "Submit Theme"
+                                                        )
+                                                    ) : (
+                                                        "Next Step"
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        </>
+                                    )}
                                 </main>
                             </div>
                         </div>

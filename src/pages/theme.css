@@ -1,68 +1,151 @@
+@import"https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap";
+@font-face {
+    font-family: Maple Mono;
+    font-style: normal;
+    font-display: swap;
+    font-weight: 400;
+    src: url(https://cdn.jsdelivr.net/fontsource/fonts/maple-mono@latest/latin-400-normal.woff2) format("woff2"),url(https://cdn.jsdelivr.net/fontsource/fonts/maple-mono@latest/latin-400-normal.woff) format("woff")
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Fira+Code&display=swap");
-
 :root {
-    --background: 223 7% 20%; /* #2f3136 - Discord dark bg */
-    --foreground: 0 0% 100%; /* text color */
+    --background: 215 22% 15%; /* #1a1b26 background */
+    --foreground: 0 0% 100%; /* white text for most elements */
 
-    --card: 225 6% 25%; /* #36393f - card bg */
+    --card: 215 22% 17%; /* Slightly lighter than background for cards */
     --card-foreground: 0 0% 100%;
 
-    --popover: 225 7% 18%; /* context menu bg */
+    --popover: 215 22% 13%; /* Darker popover */
     --popover-foreground: 0 0% 100%;
 
-    --primary: 235 85% 65%; /* #7289da - Discord blurple */
-    --primary-foreground: 0 0% 100%;
+    --primary: 218 100% 72%; /* rgb(122, 162, 247) primary - keep for titles */
+    --primary-foreground: 215 22% 15%;
 
-    --secondary: 225 7% 25%; /* #36393f - secondary bg */
+    --secondary: 215 22% 20%; /* Medium gray */
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 220 6% 40%; /* muted text */
-    --muted-foreground: 220 4% 60%;
+    --muted: 215 22% 18%; /* Muted elements */
+    --muted-foreground: 0 0% 70%;
 
-    --accent: 235 85% 65%; /* same as primary for highlights */
-    --accent-foreground: 0 0% 100%;
+    --accent: 218 100% 72%; /* Same as primary */
+    --accent-foreground: 215 22% 15%;
 
-    --destructive: 359 82% 61%; /* #f04747 - Discord red */
+    --destructive: 0 72% 51%; /* Modern red */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 7% 30%; /* subtle border color */
-    --input: 220 7% 25%;
-    --ring: 235 85% 65%; /* Discord blurple */
+    --border: 215 22% 20%; /* Match background borders */
+    --input: 215 22% 20%;
+    --ring: 218 100% 72%; /* Focus ring */
 
-    --radius: 0.5rem;
+    --radius: 1rem; /* More rounded like Material UI 3 */
 
-    --context-menu-bg: 225 7% 18%;
-    --context-menu-hover: 225 7% 25%;
-    --context-menu-border: 220 7% 30%;
+    --context-menu-bg: 215 22% 13%;
+    --context-menu-hover: 215 22% 18%;
+    --context-menu-border: 215 22% 20%;
+}
+
+.dark {
+    --background: 215 22% 15%; /* #1a1b26 background */
+    --foreground: 0 0% 100%; /* white text for most elements */
+
+    --card: 215 22% 17%; /* Slightly lighter than background for cards */
+    --card-foreground: 0 0% 100%;
+
+    --popover: 215 22% 13%; /* Darker popover */
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 218 100% 72%; /* rgb(122, 162, 247) primary - keep for titles */
+    --primary-foreground: 215 22% 15%;
+
+    --secondary: 215 22% 20%; /* Medium gray */
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 215 22% 18%; /* Muted elements */
+    --muted-foreground: 0 0% 70%;
+
+    --accent: 218 100% 72%; /* Same as primary */
+    --accent-foreground: 215 22% 15%;
+
+    --destructive: 0 72% 51%; /* Modern red */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 215 22% 20%; /* Match background borders */
+    --input: 215 22% 20%;
+    --ring: 218 100% 72%; /* Focus ring */
+
+    --context-menu-bg: 215 22% 13%;
+    --context-menu-hover: 215 22% 18%;
+    --context-menu-border: 215 22% 20%;
 }
 
 *:not(code, pre, .codeblock *) {
     font-family:
-        "Poppins",
+        "Montserrat",
         -apple-system,
         BlinkMacSystemFont,
-        "SF Pro",
+        "SF Pro Display",
         "Segoe UI",
         Roboto,
-        Oxygen,
-        Ubuntu,
-        Cantarell,
-        "Open Sans",
         "Helvetica Neue",
         system-ui,
         sans-serif;
 }
 
-body {
-    @apply bg-background text-foreground antialiased;
+code, pre, .codeblock * {
+    font-family:
+        "Maple Mono",
+        "SF Mono",
+        Monaco,
+        Inconsolata,
+        "Roboto Mono",
+        Consolas,
+        "Courier New",
+        monospace;
 }
 
-/* Discord-style Context Menu */
+body {
+    @apply bg-background text-foreground antialiased;
+    background: #1a1b26;
+    margin: 0;
+    min-height: 100vh;
+}
+
+main {
+    background: #1a1b26;
+    margin: 0;
+    min-height: 100vh;
+}
+
+.sticky {
+    will-change: background-color, backdrop-filter;
+}
+
+.btn-rounded {
+    border-radius: var(--radius);
+}
+
+button, .btn {
+    transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+    border-radius: var(--radius);
+}
+
+button:not([class*="outline"]):hover, .btn:not([class*="outline"]):hover {
+    transform: translateY(-1px);
+}
+
+.bg-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(218 100% 76%) 100%);
+    border-radius: var(--radius);
+    border: none;
+}
+
+.bg-primary:hover {
+    background: linear-gradient(135deg, hsl(218 100% 76%) 0%, hsl(var(--primary)) 100%);
+}
+
 [data-radix-popper-content-wrapper] {
     position: fixed !important;
     background-color: hsl(var(--context-menu-bg));
@@ -169,4 +252,8 @@ body {
 .language-css * {
     font-size: 0.8rem !important;
     line-height: 1.5 !important;
+}
+
+.bg {
+    background-color: #1a1b26;
 }

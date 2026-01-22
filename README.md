@@ -1,22 +1,22 @@
-## discord-themes.com
+## themes.equicord.org
 
 This is the repository for the ThemeLibrary website including it's API.
 
 ### Want to show where to find your theme?
 
 Use our new badge in your README to show people where to find your theme!
-<a href="https://discord-themes.com">
-<img src="https://discord-themes.com/badge.png" alt="Description" width="125" />
+<a href="https://themes.equicord.org">
+<img src="https://themes.equicord.org/badge.png" alt="Description" width="125" />
 </a>
 
 ```html
-<a href="https://discord-themes.com/theme/1">
-  <img src="https://discord-themes.com/badge.png" alt="Description" width="125" />
+<a href="https://themes.equicord.org/theme/1">
+  <img src="https://themes.equicord.org/badge.png" alt="Description" width="125" />
 </a>
 ```
 ---
 
-This API is used to retrieve themes used for the [Theme Library](https://github.com/faf4a/ThemeLibrary) and [this website](https://discord-themes.com).
+This API is used to retrieve themes used for the [Theme Library](https://github.com/Equicord/ThemeLibrary) and [this website](https://themes.equicord.org).
 
 This website is built with React.
 
@@ -29,10 +29,10 @@ This website is built with React.
 
 ## Theme Related
 
-Base: https://api.discord-themes.com/
-(you can also request via https://discord-themes.com/api)
+Base: <https://api.themes.equicord.org/>
+(you can also request via <https://themes.equicord.org/api>)
 
-Base CDN: https://cdn.discord-themes.com/
+Base CDN: <https://cdn.themes.equicord.org/>
 
 ---
 
@@ -44,7 +44,7 @@ Wants `theme` as `query`
 #### Example
 
 ```js
-fetch("https://api.discord-themes.com/Monocord")
+fetch("https://api.themes.equicord.org/Monocord")
 ```
 
 #### Returns
@@ -70,12 +70,12 @@ Wants `theme` as `query`
 - Returns thumbnail from a theme.
 
 > [!NOTE]
-> Redirects permanently to a cloudflare worker, you can directly access it via https://cdn.discord-themes.com/theme/{name}
+> Redirects permanently to a cloudflare worker, you can directly access it via <https://cdn.themes.equicord.org/theme/{name}>
 
 #### Example
 
 ```js
-fetch("https://api.discord-themes.com/thumbnail/Cyan")
+fetch("https://api.themes.equicord.org/thumbnail/Cyan")
 ```
 
 #### Returns
@@ -83,7 +83,7 @@ fetch("https://api.discord-themes.com/thumbnail/Cyan")
 - Content-Type: `image/png`, `image/gif` or `image/webp`
 - Returns 200, 404 or 405
 
-![preview](https://cdn.discord-themes.com/theme/Cyan)
+![preview](https://cdn.themes.equicord.org/theme/Cyan)
 
 ### `GET` **`/download/[themeId]`**
 Wants `themeId` as `query`
@@ -93,7 +93,7 @@ Wants `themeId` as `query`
 #### Example
 
 ```js
-fetch("https://api.discord-themes.com/thumbnail/Cyan")
+fetch("https://api.themes.equicord.org/thumbnail/Cyan")
 ```
 
 #### Returns
@@ -109,7 +109,7 @@ Wants `themeId` as `query`
 #### Example
 
 ```js
-fetch("https://api.discord-themes.com/thumbnail/Cyan")
+fetch("https://api.themes.equicord.org/thumbnail/Cyan")
 ```
 
 #### Returns
@@ -150,7 +150,7 @@ fetch("https://api.discord-themes.com/thumbnail/Cyan")
 #### Example
 
 ```js
-fetch("https://api.discord-themes.com/themes")
+fetch("https://api.themes.equicord.org/themes")
 ```
 
 #### Returns
@@ -197,7 +197,7 @@ fetch("https://api.discord-themes.com/themes")
 #### Example
 
 ```js
-fetch("https://api.discord-themes.com/likes/get")
+fetch("https://api.themes.equicord.org/likes/get")
 ```
 
 #### Returns
@@ -231,7 +231,7 @@ Wants `Authorization` in `headers` (unique user token, **__DO NOT PASS YOUR DISC
 #### Example
 
 ```js
-fetch("https://api.discord-themes.com/likes/add", {
+fetch("https://api.themes.equicord.org/likes/add", {
     method: "POST",
     headers: {
         "Content-Type": "application/json",
@@ -261,7 +261,7 @@ Wants `Authorization` in `headers` (unique user token, **__DO NOT PASS YOUR DISC
 #### Example
 
 ```js
-fetch("https://api.discord-themes.com/likes/remove", {
+fetch("https://api.themes.equicord.org/likes/remove", {
     method: "POST",
     headers: {
         "Content-Type": "application/json",
@@ -292,7 +292,7 @@ Wants `Authorization` in `headers` (unique user token, **__DO NOT PASS YOUR DISC
 #### Example
 
 ```js
-fetch("https://api.discord-themes.com/submit/theme", {
+fetch("https://api.themes.equicord.org/submit/theme", {
     method: "POST",
     headers: {
         "Content-Type": "application/json"
@@ -315,7 +315,7 @@ fetch("https://api.discord-themes.com/submit/theme", {
 
 ## Auth Related
 
-Base: https://api.discord-themes.com/user
+Base: <https://api.themes.equicord.org/user>
 
 ### `GET` **`/auth`**
 Wants `code` as `query`
@@ -324,12 +324,12 @@ Wants `code` as `query`
 
 Don't call the endpoint directly, it will return 401, use discord.
 
-`https://discord.com/oauth2/authorize?client_id=1257819493422465235&response_type=code&redirect_uri=https://api.discord-themes.com/user/auth&scope=identify`
+`https://discord.com/oauth2/authorize?client_id=1464006702125940736&response_type=code&redirect_uri=https://api.themes.equicord.org/user/auth&scope=identify`
 
 #### Example
 
 ```js
-fetch("https://api.discord-themes.com/user/auth?code=ACCESS_TOKEN")
+fetch("https://api.themes.equicord.org/user/auth?code=ACCESS_TOKEN")
 ```
 
 #### Returns
@@ -352,7 +352,7 @@ Wants `Authorization` in `headers` (unique user token, **__DO NOT PASS YOUR DISC
 #### Example
 
 ```js
-fetch("https://api.discord-themes.com/user/findUserByToken", {
+fetch("https://api.themes.equicord.org/user/findUserByToken", {
     method: "POST",
     headers: {
         "Content-Type": "application/json",
@@ -384,7 +384,7 @@ Wants `Authorization` in `headers` (unique user token, **__DO NOT PASS YOUR DISC
 #### Example
 
 ```js
-fetch("https://api.discord-themes.com/user/revoke", {
+fetch("https://api.themes.equicord.org/user/revoke", {
     method: "POST",
     headers: {
         "Content-Type": "application/json",

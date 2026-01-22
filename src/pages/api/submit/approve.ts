@@ -46,7 +46,8 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
         const submittedDb = client.db("submittedThemesDatabase");
         const themesDb = client.db("themesDatabase");
         const pendingCollection = submittedDb.collection("pending");
-        const themesCollection = themesDb.collection("themes");
+        const themesCollection = themesDb.collection("themesDatabase");
+        const notificationsCollection = themesDb.collection("notifications");
 
         const theme = await pendingCollection.findOne({ _id: new ObjectId(id as string) });
 
@@ -69,6 +70,7 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
             {
                 $set: {
                     state: "approved",
+                    approvedAt: new Date(),
                     moderator: {
                         discord_snowflake: user.id,
                         discord_name: user.global_name || "",
@@ -81,6 +83,17 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
                 }
             }
         );
+
+        
+        await notificationsCollection.insertOne({
+            userId: theme.submittedBy,
+            type: "theme_approved",
+            themeId: id,
+            themeName: theme.title,
+            message: `Your theme "${theme.title}" has been approved!`,
+            createdAt: new Date(),
+            read: false
+        });
 
         const totalThemes = await themesCollection.countDocuments();
 
@@ -96,7 +109,7 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
         const base64Content = theme.file.split(",")[1];
         const fileName = `${theme.title}_${totalThemes + 1}.${imageExt}`;
 
-        const githubResponse = await fetch(`https://api.github.com/repos/faf4a/themesApi/contents/public/thumbnails/${fileName}`, {
+        const githubResponse = await fetch(`https://api.github.com/repos/Equicord/themesApi/contents/public/thumbnails/${fileName}`, {
             method: "PUT",
             headers: {
                 Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
@@ -156,7 +169,7 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
             })),
             tags: tags.length > 0 ? [...tags] : [],
             version: version ? version[1] : "1.0.0",
-            thumbnail_url: `https://cdn.discord-themes.com/theme/${theme.title.replace(/ /g, "-")}_${totalThemes + 1}.${imageExt}`,
+            thumbnail_url: `https://cdn.themes.equicord.org/theme/${theme.title.replace(/ /g, "-")}_${totalThemes + 1}.${imageExt}`,
             release_date: new Date().toISOString(),
             guild: guildInfo,
             content: theme.themeContent,
@@ -166,6 +179,8 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
 
         await themesCollection.insertOne(newTheme);
 
+        
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
         return res.status(200).json({ status: 200, title: theme.title, message: "Theme approved" });
     } catch (error) {
         console.error(error);

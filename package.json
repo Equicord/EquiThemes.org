@@ -1,18 +1,18 @@
 {
-    "name": "discord-themes.com",
+    "name": "themes.equicord.org",
     "version": "0.0.0",
     "private": true,
     "scripts": {
+        "start": "next start -p 3000",
         "dev": "next dev",
-        "local": "vercel dev --listen 4321",
         "build": "next build",
-        "deploy": "next lint && vercel --prod",
         "lint": "next lint",
         "postbuild": "next-sitemap"
     },
     "dependencies": {
         "@emotion/react": "^11.13.5",
         "@emotion/styled": "^11.13.5",
+        "@mui/icons-material": "^7.3.5",
         "@radix-ui/react-alert-dialog": "^1.1.2",
         "@radix-ui/react-avatar": "^1.1.2",
         "@radix-ui/react-checkbox": "^1.1.3",

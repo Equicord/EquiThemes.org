@@ -5,7 +5,6 @@
 
 import { useRouter } from "next/navigation";
 import { Button } from "@components/ui/button";
-import { Book, Calendar, Check, Code, Copy, Download, ExternalLink, Eye, Github, Heart } from "lucide-react";
 import { MouseEvent, useEffect, useState } from "react";
 import Head from "next/head";
 import ReactMarkdown from "react-markdown";
@@ -21,6 +20,7 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { EditThemeModal } from "@components/theme/edit-modal";
 import { ConfirmDialog } from "@components/ui/confirm-modal";
 import { type Theme } from "@types";
+import { Download as DownloadIcon, Favorite as HeartIcon, FavoriteBorder as HeartOutlineIcon, CalendarMonth as CalendarIcon, BookOutlined as BookIcon, Code as CodeIcon, ContentCopy as CopyIcon, Done as CheckIcon, GitHub as GithubIcon, RemoveRedEye as EyeIcon, OpenInNew as ExternalLinkIcon, Edit as EditIcon, Delete as DeleteIcon } from "@mui/icons-material";
 
 const Skeleton = ({ className = "", ...props }) => <div className={`animate-pulse bg-muted/30 rounded ${className}`} {...props} />;
 
@@ -30,7 +30,7 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
     const [likedThemes, setLikedThemes] = useState();
     const [isLikeDisabled, setIsLikeDisabled] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
-    const { authorizedUser, isAuthenticated, isLoading } = useWebContext();
+    const { authorizedUser, isAuthenticated, isLoading, mutateThemes } = useWebContext();
     const { toast } = useToast();
     const [isCopied, setIsCopied] = useState(false);
     const [editModalOpen, setEditModalOpen] = useState(false);
@@ -83,12 +83,29 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
                 body: JSON.stringify(updatedTheme)
             });
 
-            if (response.ok) {
-                toast({ description: "Theme updated successfully" });
-                window.location.reload();
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || "Failed to update theme");
             }
-        } catch {
-            toast({ description: "Failed to update theme" });
+
+            toast({
+                title: "Success",
+                description: "Theme updated successfully"
+            });
+            
+            
+            if (mutateThemes) {
+                await mutateThemes();
+            }
+            
+            
+            window.location.reload();
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error.message || "Failed to update theme",
+                variant: "destructive"
+            });
         }
     };
 
@@ -101,12 +118,22 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
                 }
             });
 
-            if (response.ok) {
-                toast({ description: "Theme deleted successfully" });
-                window.location.href = "/";
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || "Failed to delete theme");
             }
-        } catch {
-            toast({ description: "Failed to delete theme" });
+
+            toast({
+                title: "Success",
+                description: "Theme deleted successfully"
+            });
+            window.location.href = "/";
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error.message || "Failed to delete theme",
+                variant: "destructive"
+            });
         }
     };
 
@@ -122,20 +149,24 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
         }
 
         return (
-            <div key={author.discord_snowflake} className="p-3 rounded-lg border bg-background border-input hover:border-primary/40 transition-colors">
-                <p className="font-semibold">{author.discord_name}</p>
-                <p className="text-xs text-muted-foreground">ID: {author.discord_snowflake}</p>
-                <div className={`grid ${author.github_name ? "grid-cols-2" : "grid-cols-1"} gap-2 mt-2`}>
-                    <Button variant="outline" onClick={() => handleAuthorClick(author)}>
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Profile
-                    </Button>
-                    {author.github_name && (
-                        <Button variant="outline" onClick={() => handleGithubClick(author.github_name)}>
-                            <Github className="mr-2 h-4 w-4" />
-                            Github
+            <div key={author.discord_snowflake} className="p-4 rounded-2xl border bg-card/50 border-border/40 hover:border-primary/40 transition-all duration-200">
+                <div className="flex flex-col gap-3">
+                    <div>
+                        <p className="font-semibold text-sm">{author.discord_name}</p>
+                        <p className="text-xs text-muted-foreground">ID: {author.discord_snowflake}</p>
+                    </div>
+                    <div className={`grid gap-2 ${author.github_name ? "grid-cols-1" : ""}`}>
+                        <Button variant="outline" size="sm" onClick={() => handleAuthorClick(author)} className="text-xs h-9">
+                            <ExternalLinkIcon className="mr-2 h-3.5 w-3.5" />
+                            View Profile
                         </Button>
-                    )}
+                        {author.github_name && (
+                            <Button variant="outline" size="sm" onClick={() => handleGithubClick(author.github_name)} className="text-xs h-9">
+                                <GithubIcon className="mr-2 h-3.5 w-3.5" />
+                                GitHub
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
         );
@@ -250,22 +281,22 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
 
     const statsItems = [
         {
-            icon: Download,
+            icon: DownloadIcon,
             label: "Downloads",
             value: theme?.downloads || 0
         },
         {
-            icon: Heart,
+            icon: HeartIcon,
             label: "Likes",
             value: theme?.likes || 0
         },
         {
-            icon: Calendar,
+            icon: CalendarIcon,
             label: "Created",
             value: theme?.release_date ? new Date(theme.release_date).toLocaleDateString() : "Recently"
         },
         {
-            icon: Book,
+            icon: BookIcon,
             label: "Version",
             value: theme?.version || "1.0.0"
         }
@@ -291,32 +322,32 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
                 <title>{theme.name} - Discord Theme</title>
                 <meta name="description" content={theme.description} />
                 <meta name="keywords" content={theme.tags.join(", ")} />
-                <meta name="author" content="discord-themes.com" />
+                <meta name="author" content="themes.equicord.org" />
 
                 <meta property="og:type" content="website" />
                 <meta property="og:title" content={theme.name} />
                 <meta property="og:description" content={theme.description} />
                 <meta property="og:image" content={theme.thumbnail_url} />
-                <meta property="og:url" content="https://discord-themes.com" />
+                <meta property="og:url" content="https://themes.equicord.org" />
                 <meta
                     property="og:site_name"
                     content={`${
                         // @ts-ignore
                         theme.author?.discord_name ? `@${theme.author.discord_name}` : theme.author.map((x) => `@${x.discord_name}`).join(", ")
-                    } - https://discord-themes.com`}
+                    } - https://themes.equicord.org`}
                 />
 
                 <meta name="twitter:card" content="summary_large_image" />
                 <meta name="twitter:title" content={theme.name} />
                 <meta name="twitter:description" content={theme.description} />
                 <meta name="twitter:image" content={theme.thumbnail_url} />
-                <meta name="twitter:site" content="discord-themes.com" />
+                <meta name="twitter:site" content="themes.equicord.org" />
             </Head>
 
-            <div className="bg-background">
-                <div className="container mx-auto px-4 py-6">
-                    <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_300px]">
-                        <div className="space-y-6">
+            <div className="">
+                <div className="max-w-6xl mx-auto px-4 py-8">
+                    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_340px]">
+                        <div className="space-y-8 min-w-0">
                             {isLoading ? (
                                 <>
                                     <Skeleton className="h-8 w-3/4" />
@@ -325,160 +356,214 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
                                 </>
                             ) : (
                                 <div>
-                                    <div className="rounded-lg border-b border-border/40 bg-card p-6 mb-2">
-                                        <h2 className="text-2xl font-bold mb-4">{theme.name}</h2>
-                                        <p className="description text-muted-foreground">
+                                    <div className="mb-8">
+                                        <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4 text-primary">{theme.name}</h1>
+                                        <div className="description text-lg text-foreground leading-relaxed">
                                             <ReactMarkdown remarkPlugins={[remarkGfm]}>{theme.description}</ReactMarkdown>
-                                        </p>
-                                    </div>
-                                    <div className="rounded-lg border-b border-border/40 bg-card p-6">
-                                        <div className="bg-muted rounded-lg flex justify-center items-center max-w-[900px] overflow-hidden">
-                                            <Image unoptimized draggable={false} src={theme.thumbnail_url} alt={theme.name} width={1920} height={1080} className="rounded-lg object-contain" priority />
                                         </div>
+                                        {theme.tags && theme.tags.length > 0 && (
+                                            <div className="flex flex-wrap gap-2 mt-6">
+                                                {theme.tags.map((tag) => (
+                                                    <span key={tag} className="px-3 py-1.5 bg-muted/50 text-sm font-medium rounded-full border border-border/30">
+                                                        {tag}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="rounded-lg border-b border-border/40 bg-card p-6 mt-2">
-                                        <div className="mb-4">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <h3 className="text-lg font-semibold">Theme Source</h3>
-                                                <Button variant="outline" size="sm" onClick={() => handleCopyCode(decodeThemeContent(theme.content))}>
+
+                                    <Card className="overflow-hidden border-border/40 mb-4">
+                                        <CardContent className="p-0">
+                                            <div className="bg-muted/20 rounded-2xl flex justify-center items-center overflow-hidden aspect-video">
+                                                <Image unoptimized draggable={false} src={theme.thumbnail_url} alt={theme.name} width={1920} height={1080} className="object-cover w-full h-full" priority />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+
+                                    <Card className="border-border/40">
+                                        <CardContent className="p-6">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h2 className="text-xl font-semibold text-primary">Source Code</h2>
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    onClick={() => handleCopyCode(decodeThemeContent(theme.content))} 
+                                                    className="flex items-center gap-2 hover:text-foreground hover:border-foreground"
+                                                >
                                                     {isCopied ? (
                                                         <>
-                                                            <Check className="h-4 w-4 mr-2" /> Copied
+                                                            <CheckIcon className="h-4 w-4" />
+                                                            Copied
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <Copy className="h-4 w-4 mr-2" /> Copy Code
+                                                            <CopyIcon className="h-4 w-4" />
+                                                            Copy Code
                                                         </>
                                                     )}
                                                 </Button>
                                             </div>
-                                        </div>
 
-                                        <div className="codeblock rounded-lg border border-muted bg-muted/30 p-4 relative">
-                                            <SyntaxHighlighter
-                                                language="css"
-                                                style={vscDarkPlus}
-                                                customStyle={{
-                                                    maxWidth: 900,
-                                                    maxHeight: 400,
-                                                    borderRadius: "0.5rem",
-                                                    fontSize: "1.05em",
-                                                    background: "transparent",
-                                                    margin: 0,
-                                                    padding: 0,
-                                                    fontFamily: '"Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
-                                                }}
-                                                codeTagProps={{ style: { fontFamily: "inherit" } }}
-                                                wrapLongLines={true}
-                                            >
-                                                {decodeThemeContent(theme.content)}
-                                            </SyntaxHighlighter>
-                                        </div>
-                                    </div>
+                                            <div className="codeblock rounded-2xl border border-border/30 bg-muted/10 p-4 relative overflow-hidden">
+                                                <SyntaxHighlighter
+                                                    language="css"
+                                                    style={vscDarkPlus}
+                                                    customStyle={{
+                                                        maxHeight: 500,
+                                                        borderRadius: "0.75rem",
+                                                        fontSize: "0.875rem",
+                                                        background: "transparent",
+                                                        margin: 0,
+                                                        padding: "1rem",
+                                                        fontFamily: '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
+                                                    }}
+                                                    codeTagProps={{ style: { fontFamily: "inherit" } }}
+                                                    wrapLongLines={true}
+                                                >
+                                                    {decodeThemeContent(theme.content)}
+                                                </SyntaxHighlighter>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
                                 </div>
                             )}
                         </div>
 
-                        <div className="space-y-4">
-                            <div className="rounded-lg border-b border-border/40 bg-card p-4">
-                                <div className="space-y-3">
-                                    <Button size="sm" disabled={isLoading || isDownloaded} onClick={handleDownload} className="w-full flex items-center gap-2 justify-center">
-                                        {isDownloaded ? (
-                                            <>
-                                                <Check className="h-4 w-4" />
-                                                Downloaded
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Download className="h-4 w-4" />
-                                                Download
-                                            </>
-                                        )}
-                                    </Button>
-                                    {theme.source && (
-                                        <Button disabled={isLoading} variant="outline" className="w-full" size="lg" onClick={() => window.open(theme.source, "_blank", "noopener,noreferrer")}>
-                                            <Github className="mr-2 h-4 w-4" />
-                                            View on GitHub
+                        <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+                            <Card className="border-border/40">
+                                <CardContent className="p-6">
+                                    <div className="space-y-3">
+                                        <Button size="lg" disabled={isLoading || isDownloaded} onClick={handleDownload} className="w-full h-12 text-base font-medium">
+                                            {isDownloaded ? (
+                                                <>
+                                                    <CheckIcon className="h-5 w-5 mr-2" />
+                                                    Downloaded
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <DownloadIcon className="h-5 w-5 mr-2" />
+                                                    Download Theme
+                                                </>
+                                            )}
                                         </Button>
-                                    )}
-                                    <Button disabled={isLoading || isMobile} variant="outline" className="w-full" size="lg" onClick={() => window.open(previewUrl, "_blank", "noopener,noreferrer")}>
-                                        <Eye className="mr-2 h-4 w-4" />
-                                        {isMobile ? "Not available on mobile" : "Preview"}
-                                    </Button>
-                                    {!isLoading &&
-                                        (isAuthenticated ? (
-                                            <Button
-                                                variant="outline"
-                                                disabled={!isAuthenticated || isLoading || isLikeDisabled}
-                                                className={`w-full ${
-                                                    // @ts-ignore
-                                                    likedThemes?.likes?.find((t) => t.themeId === theme.id)?.hasLiked ? "text-primary border-primary hover:bg-primary/10" : ""
-                                                }`}
-                                                onClick={handleLike(theme.id)}
-                                            >
-                                                {
-                                                    // @ts-ignore
-                                                    likedThemes?.likes?.find((t) => t.themeId === theme.id)?.hasLiked ? <Heart className="fill-current mr-2 h-4 w-4" /> : <Heart className="mr-2 h-4 w-4" />
-                                                }
-                                                {
-                                                    // @ts-ignore
-                                                    likedThemes?.likes?.find((t) => t.themeId === theme.id)?.hasLiked ? "Liked" : "Like"
-                                                }
+
+                                        {theme.source && (
+                                            <Button disabled={isLoading} variant="outline" className="w-full h-11" onClick={() => window.open(theme.source, "_blank", "noopener,noreferrer")}>
+                                                <GithubIcon className="mr-2 h-4 w-4" />
+                                                View on GitHub
                                             </Button>
-                                        ) : (
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger className="w-full">
-                                                        <Button variant="outline" disabled={!isAuthenticated} className="w-full">
-                                                            <Heart className="mr-2 h-4 w-4" /> Like
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>You must be logged in to like themes.</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                        ))}
-                                    {false &&
-                                        !isLoading &&
-                                        isAuthenticated &&
-                                        (authorizedUser?.id ===
-                                            // @ts-ignore
-                                            theme?.author?.discord_snowflake ||
-                                            authorizedUser?.is_admin) && (
-                                            <div className="bg-card border border-muted rounded-lg p-4">
-                                                <p className="text-l text-muted-foreground">Author Options</p>
-                                                <Button variant="outline" className="w-full" onClick={() => setEditModalOpen(true)}>
-                                                    <Code className="mr-2 h-4 w-4" />
-                                                    Edit
+                                        )}
+
+                                        <Button disabled={isLoading || isMobile} variant="outline" className="w-full h-11" onClick={() => window.open(previewUrl, "_blank", "noopener,noreferrer")}>
+                                            <EyeIcon className="mr-2 h-4 w-4" />
+                                            {isMobile ? "Preview (Desktop Only)" : "Live Preview"}
+                                        </Button>
+
+                                        {!isLoading &&
+                                            (isAuthenticated ? (
+                                                <Button
+                                                    variant="outline"
+                                                    disabled={!isAuthenticated || isLoading || isLikeDisabled}
+                                                    className={`w-full h-11 ${
+                                                        // @ts-ignore
+                                                        likedThemes?.likes?.find((t) => t.themeId === theme.id)?.hasLiked ? "text-red-500 border-red-200 hover:bg-red-50" : "hover:text-red-500 hover:border-red-200"
+                                                    }`}
+                                                    onClick={handleLike(theme.id)}
+                                                >
+                                                    {
+                                                        // @ts-ignore
+                                                        likedThemes?.likes?.find((t) => t.themeId === theme.id)?.hasLiked ? <HeartIcon className="mr-2 h-4 w-4" /> : <HeartOutlineIcon className="mr-2 h-4 w-4" />
+                                                    }
+                                                    {
+                                                        // @ts-ignore
+                                                        likedThemes?.likes?.find((t) => t.themeId === theme.id)?.hasLiked ? "Liked" : "Like Theme"
+                                                    }
                                                 </Button>
-                                                <Button variant="outline" className="mt-2 w-full border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition-colors" onClick={() => setDeleteDialogOpen(true)}>
-                                                    <Code className="mr-2 h-4 w-4" />
-                                                    Delete
+                                            ) : (
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger className="w-full">
+                                                            <Button variant="outline" disabled={!isAuthenticated} className="w-full h-11">
+                                                                <HeartOutlineIcon className="mr-2 h-4 w-4" /> Like Theme
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>Log in to like themes</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {!isLoading &&
+                                isAuthenticated &&
+                                (authorizedUser?.id ===
+                                    // @ts-ignore
+                                    theme?.author?.discord_snowflake ||
+                                    authorizedUser?.is_admin) && (
+                                    <Card className="border-destructive/20">
+                                        <CardContent className="p-6">
+                                            <h3 className="font-semibold mb-4">Author Options</h3>
+                                            <div className="space-y-2">
+                                                <Button 
+                                                    variant="outline" 
+                                                    className="w-full hover:text-foreground hover:border-foreground" 
+                                                    onClick={() => setEditModalOpen(true)}
+                                                >
+                                                    <EditIcon className="mr-2 h-4 w-4" />
+                                                    Edit Theme
+                                                </Button>
+                                                <Button 
+                                                    variant="outline" 
+                                                    className="w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors" 
+                                                    onClick={() => setDeleteDialogOpen(true)}
+                                                >
+                                                    <DeleteIcon className="mr-2 h-4 w-4" />
+                                                    Delete Theme
                                                 </Button>
                                             </div>
-                                        )}
-                                </div>
-                                {!isLoading && <ThemeStats />}
-                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )}
+
                             {!isLoading && (
-                                <div className="rounded-lg border-b border-border/40 bg-card p-4">
-                                    <div className="space-y-3">
-                                        <h2 className="text-lg font-semibold">Contributors</h2>
-                                        <div className="grid gap-2">{Array.isArray(theme.author) ? theme.author.map(renderAuthor) : renderAuthor(theme.author)}</div>
-                                    </div>
-                                </div>
+                                <Card className="border-border/40">
+                                    <CardContent className="p-6">
+                                        <h3 className="font-semibold mb-4">Statistics</h3>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {statsItems.map(({ icon: Icon, label, value }) => (
+                                                <div key={label} className="text-center">
+                                                    <Icon className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
+                                                    <div className="text-lg font-semibold">{value}</div>
+                                                    <div className="text-xs text-muted-foreground">{label}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                </Card>
                             )}
+
+                            {!isLoading && (
+                                <Card className="border-border/40">
+                                    <CardContent className="p-6">
+                                        <h3 className="font-semibold mb-4">Contributors</h3>
+                                        <div className="space-y-3">{Array.isArray(theme.author) ? theme.author.map(renderAuthor) : renderAuthor(theme.author)}</div>
+                                    </CardContent>
+                                </Card>
+                            )}
+
                             {!isLoading && theme.guild && (
-                                <div className="rounded-lg border-b border-border/40 bg-card p-4">
-                                    <div className="space-y-3">
-                                        <h2>Support Server</h2>
-                                        <Button variant="outline" onClick={() => window.open(theme?.guild?.invite_link, "_blank")} className="w-full">
-                                            <ExternalLink className="mr-2 h-4 w-4" />
+                                <Card className="border-border/40">
+                                    <CardContent className="p-6">
+                                        <h3 className="font-semibold mb-4">Support Server</h3>
+                                        <Button variant="outline" onClick={() => window.open(theme?.guild?.invite_link, "_blank")} className="w-full h-11">
+                                            <ExternalLinkIcon className="mr-2 h-4 w-4" />
                                             Join {theme.guild.name}
                                         </Button>
-                                    </div>
-                                </div>
+                                    </CardContent>
+                                </Card>
                             )}
                         </div>
                     </div>

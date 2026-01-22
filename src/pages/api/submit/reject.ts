@@ -9,7 +9,8 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
     }
 
     const { authorization } = req.headers;
-    const { id, reason } = req.query;
+    const { id } = req.query;
+    const { reason = "", banUser = false, banReason = "" } = req.body;
 
     if (!authorization) {
         return res.status(400).json({ message: "Cannot check authorization without unique token" });
@@ -42,7 +43,11 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
     try {
         const client = await clientPromise;
         const submittedDb = client.db("submittedThemesDatabase");
+        const usersDb = client.db("discordUsers");
         const pendingCollection = submittedDb.collection("pending");
+        const usersCollection = usersDb.collection("users");
+        const themesCollection = client.db("themesDatabase");
+        const notificationsCollection = themesCollection.collection("notifications");
 
         const theme = await pendingCollection.findOne({ _id: new ObjectId(id as string) });
 
@@ -60,12 +65,14 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
             });
         }
 
+        
         await pendingCollection.updateOne(
             { _id: new ObjectId(id as string) },
             {
                 $set: {
                     state: "rejected",
                     reason: reason || "No reason provided",
+                    rejectedAt: new Date(),
                     moderator: {
                         discord_snowflake: user.id,
                         discord_name: user.global_name || "",
@@ -79,7 +86,38 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
             }
         );
 
-        return res.status(200).json({ status: 200, title: theme.title, message: "Theme rejected" });
+        
+        await notificationsCollection.insertOne({
+            userId: theme.submittedBy,
+            type: "theme_rejected",
+            themeId: id,
+            themeName: theme.title,
+            message: `Your theme "${theme.title}" has been rejected.`,
+            reason: reason || "No reason provided",
+            createdAt: new Date(),
+            read: false
+        });
+
+        
+        if (banUser) {
+            await usersCollection.updateOne(
+                { "user.id": theme.submittedBy },
+                {
+                    $set: {
+                        "user.bannedFromSubmissions": true,
+                        "user.banReason": banReason || "Rejected multiple times",
+                        "user.bannedAt": new Date(),
+                        "user.bannedBy": {
+                            discord_snowflake: user.id,
+                            discord_name: user.global_name || "",
+                            avatar_url: user.avatar || ""
+                        }
+                    }
+                }
+            );
+        }
+
+        return res.status(200).json({ status: 200, title: theme.title, message: "Theme rejected", banned: banUser });
     } catch (error) {
         console.error(error);
         res.status(500).json({

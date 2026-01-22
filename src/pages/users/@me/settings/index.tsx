@@ -3,7 +3,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@comp
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@components/ui/alert-dialog";
-import { Copy, Eye, Github, Hash, RefreshCw, Settings, User, UserCircle } from "lucide-react";
+import { 
+    ContentCopy as CopyIcon, 
+    Visibility as EyeIcon, 
+    GitHub as GithubIcon, 
+    Tag as HashIcon, 
+    Refresh as RefreshIcon, 
+    Settings as SettingsIcon, 
+    Person as UserIcon, 
+    AccountCircle as UserCircleIcon 
+} from "@mui/icons-material";
 import { deleteCookie, getCookie, setCookie } from "@utils/cookies";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useToast } from "@hooks/use-toast";
@@ -76,7 +85,7 @@ function AccountLinks() {
     return (
         <div className="space-y-6 mb-4 p-6 rounded-xl border border-muted/30 bg-muted/30 shadow-sm">
             <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
-                <User className="w-5 h-5 text-primary" /> Profile Links
+                <UserIcon className="w-5 h-5 text-primary" /> Profile Links
             </h2>
             <div className="flex flex-col gap-4 md:flex-row md:gap-8">
                 <div className="flex-1">
@@ -126,11 +135,11 @@ export default function SettingsPage() {
             <Tabs defaultValue="account" className="space-y-6">
                 <TabsList className="w-full grid grid-cols-2 bg-muted rounded-lg mb-2">
                     <TabsTrigger value="account" className="rounded-l-lg data-[state=active]:bg-primary/90 data-[state=active]:text-white transition-colors">
-                        <Settings className="w-4 h-4 mr-2" />
+                        <SettingsIcon className="w-4 h-4 mr-2" />
                         Account
                     </TabsTrigger>
                     <TabsTrigger value="data" className="rounded-r-lg data-[state=active]:bg-primary/90 data-[state=active]:text-white transition-colors">
-                        <UserCircle className="w-4 h-4 mr-2" />
+                        <UserCircleIcon className="w-4 h-4 mr-2" />
                         User Data
                     </TabsTrigger>
                 </TabsList>
@@ -143,11 +152,11 @@ export default function SettingsPage() {
                         <CardContent className="pt-6 space-y-10">
                             <div className="space-y-4 mb-4">
                                 <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
-                                    <Hash className="w-5 h-5 text-primary" /> API Key
+                                    <HashIcon className="w-5 h-5 text-primary" /> API Key
                                 </h2>
                                 <Alert className="border-yellow-600/30 bg-yellow-500/10 shadow-none">
                                     <AlertTitle className="text-md font-semibold text-yellow-600 flex items-center gap-2">
-                                        <Eye className="w-4 h-4" /> Access to your Account Token
+                                        <EyeIcon className="w-4 h-4" /> Access to your Account Token
                                     </AlertTitle>
                                     <AlertDescription className="text-yellow-700/90 text-sm">
                                         <p className="text-sm text-muted-foreground">
@@ -261,11 +270,11 @@ function DeleteAccount() {
     return (
         <div className="space-y-6">
             <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
-                <UserCircle className="w-5 h-5 text-destructive" /> Delete Account
+                <UserCircleIcon className="w-5 h-5 text-destructive" /> Delete Account
             </h2>
             <Alert className="border-red-600/30 bg-red-500/10 shadow-none">
                 <AlertTitle className="text-md font-semibold text-red-600 flex items-center gap-2">
-                    <RefreshCw className="w-4 h-4" /> Deleting your Account
+                    <RefreshIcon className="w-4 h-4" /> Deleting your Account
                 </AlertTitle>
                 <AlertDescription className="text-red-700/90 text-sm">
                     <p className="text-sm text-muted-foreground">
@@ -389,17 +398,17 @@ function UserData() {
     };
 
     const userFields: UserField[] = [
-        { icon: Hash, label: "User ID", value: authorizedUser?.id },
-        { icon: User, label: "Username", value: authorizedUser?.global_name }
+        { icon: HashIcon, label: "User ID", value: authorizedUser?.id },
+        { icon: UserIcon, label: "Username", value: authorizedUser?.global_name }
     ];
     if (authorizedUser?.social?.github) {
-        userFields.push({ icon: Github, label: "GitHub", href: `https://github.com/${authorizedUser.social.github}`, value: authorizedUser?.social?.github });
+        userFields.push({ icon: GithubIcon, label: "GitHub", href: `https://github.com/${authorizedUser.social.github}`, value: authorizedUser?.social?.github });
     }
     if (authorizedUser?.donationLink) {
-        userFields.push({ icon: Eye, label: "Donation Link", href: authorizedUser.donationLink, value: authorizedUser.donationLink });
+        userFields.push({ icon: EyeIcon, label: "Donation Link", href: authorizedUser.donationLink, value: authorizedUser.donationLink });
     }
     if (authorizedUser?.websiteLink) {
-        userFields.push({ icon: Eye, label: "Website", href: authorizedUser.websiteLink, value: authorizedUser.websiteLink });
+        userFields.push({ icon: EyeIcon, label: "Website", href: authorizedUser.websiteLink, value: authorizedUser.websiteLink });
     }
 
     return (
@@ -407,7 +416,7 @@ function UserData() {
             <div className="flex justify-between items-center mb-2">
                 <p className="text-sm text-muted-foreground">Refreshing will redirect you to Discord as we do not save any access/refresh tokens or similar, this is the only way to update your data.</p>
                 <Button onClick={refreshData} disabled={loading} variant="outline" className="rounded-lg px-4 py-2" aria-busy={loading} aria-disabled={loading}>
-                    <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                    <RefreshIcon className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                     {loading ? "Refreshing..." : "Refresh"}
                 </Button>
             </div>
@@ -535,15 +544,15 @@ function APIKey() {
                     <div className="relative flex-grow">
                         <Input id="api-key" type={isVisible ? "text" : "password"} value={apiKey} readOnly className="pr-10 font-mono rounded-lg bg-muted/40 border-muted/40" aria-label="API Key" />
                         <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 rounded-r-lg" onClick={() => setIsVisible(!isVisible)} aria-label={isVisible ? "Hide API Key" : "Show API Key"}>
-                            <Eye className="h-4 w-4" />
+                            <EyeIcon className="h-4 w-4" />
                         </Button>
                     </div>
                     <Button onClick={handleCopy} aria-label="Copy API Key" className="rounded-lg">
-                        <Copy className="h-4 w-4 mr-2" />
+                        <CopyIcon className="h-4 w-4 mr-2" />
                         Copy
                     </Button>
                     <Button onClick={handleRefresh} disabled={isRefreshing || cooldown} aria-busy={isRefreshing} aria-disabled={isRefreshing || cooldown} className="rounded-lg">
-                        <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+                        <RefreshIcon className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
                         {isRefreshing ? "Refreshing..." : "Refresh"}
                     </Button>
                 </div>

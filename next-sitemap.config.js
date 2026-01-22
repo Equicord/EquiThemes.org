@@ -1,5 +1,5 @@
 const env = process.env.NODE_ENV;
-const SERVER = env === "development" ? "https://literate-engine-rv7579wprjq2px77-4321.app.github.dev" : "https://discord-themes.com";
+const SERVER = env === "development" ? "https://literate-engine-rv7579wprjq2px77-4321.app.github.dev" : "https://themes.equicord.org";
 const siteUrl = SERVER;
 
 module.exports = {

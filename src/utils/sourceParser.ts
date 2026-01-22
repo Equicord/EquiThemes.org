@@ -9,21 +9,35 @@ interface ParsedSourceUrl {
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
-export async function parseSourceUrl(url: string): Promise<string> {
-    if (isRawUrl(url)) {
-        const result = await fetchRawContent(url);
-        const rawContent = Buffer.from(result, "utf-8").toString("base64");
-        return rawContent;
-    }
-
-    const parsed = parseUrl(url);
-    if (!parsed) throw new Error("Invalid GitHub URL");
-
-    return fetchApiContent(parsed);
+function isRawHtml(content: string): boolean {
+    const trimmed = content.trim().toLowerCase();
+    return (
+        trimmed.startsWith("<!DOCTYPE") ||
+        trimmed.startsWith("<html") ||
+        trimmed.startsWith("<head") ||
+        trimmed.startsWith("<body") ||
+        trimmed.startsWith("<?xml")
+    );
 }
 
-function isRawUrl(url: string): boolean {
-    return url.includes("raw.githubusercontent.com");
+export async function parseSourceUrl(url: string): Promise<string> {
+    if (!url) throw new Error("URL is required");
+
+    let result: string;
+
+    const parsed = parseUrl(url);
+    if (parsed) {
+        result = await fetchApiContent(parsed);
+    } else {
+        result = await fetchRawContent(url);
+    }
+
+    if (isRawHtml(result)) {
+        throw new Error("Content appears to be raw HTML. Please provide a direct link to the CSS file.");
+    }
+
+    const rawContent = Buffer.from(result, "utf-8").toString("base64");
+    return rawContent;
 }
 
 function parseUrl(url: string): ParsedSourceUrl | null {
@@ -39,12 +53,20 @@ function parseUrl(url: string): ParsedSourceUrl | null {
 }
 
 async function fetchRawContent(url: string): Promise<string> {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to fetch from GitHub: ${response.statusText}`);
-    return response.text();
+    try {
+        const response = await fetch(url, {
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        return response.text();
+    } catch (error: any) {
+        throw new Error(`Failed to fetch from URL: ${error.message}`);
+    }
 }
 
-async function fetchApiContent(parsed: ParsedSourceUrl): Promise<string | null> {
+async function fetchApiContent(parsed: ParsedSourceUrl): Promise<string> {
     const { owner, repo, branch, path } = parsed;
     const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
 
@@ -57,13 +79,13 @@ async function fetchApiContent(parsed: ParsedSourceUrl): Promise<string | null> 
 
     try {
         const response = await fetch(url, { headers });
-        if (!response.ok) return null;
+        if (!response.ok) throw new Error(`Failed to fetch from GitHub API: ${response.statusText}`);
 
         const data: any = await response.json();
-        if (!data.content) return null;
+        if (!data.content) throw new Error("No content found in GitHub API response");
 
-        return data.content;
-    } catch {
-        return null;
+        return Buffer.from(data.content, "base64").toString("utf-8");
+    } catch (error: any) {
+        throw new Error(`GitHub API fetch failed: ${error.message}`);
     }
 }

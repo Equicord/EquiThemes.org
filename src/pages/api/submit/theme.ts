@@ -42,6 +42,15 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
         return res.status(401).json({ status: 401, message: "Given token is not authorized" });
     }
 
+    
+    if (user.bannedFromSubmissions) {
+        return res.status(403).json({
+            status: 403,
+            message: "You are banned from submitting themes",
+            reason: user.banReason || "Banned by moderator"
+        });
+    }
+
     try {
         const client = await clientPromise;
         const db = client.db("submittedThemesDatabase");
@@ -69,8 +78,8 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
         const submission = {
             ...req.body,
             themeContent,
-            fileUrl: req.body.file && req.body.file.startsWith('data:image') ? req.body.file : (req.body.fileUrl || "https://cdn.discord-themes.com/not-found.png"),
-            file: req.body.file && req.body.file.startsWith('data:image') ? req.body.file : (req.body.fileUrl || "https://cdn.discord-themes.com/not-found.png"),
+            fileUrl: req.body.file && req.body.file.startsWith('data:image') ? req.body.file : (req.body.fileUrl || "https://cdn.themes.equicord.org/not-found.png"),
+            file: req.body.file && req.body.file.startsWith('data:image') ? req.body.file : (req.body.fileUrl || "https://cdn.themes.equicord.org/not-found.png"),
             submittedAt: new Date(),
             submittedBy: user.id,
             state: "pending"

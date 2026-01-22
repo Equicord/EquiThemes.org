@@ -1,20 +1,22 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { SearchBar } from "@components/search-bar";
 import { ThemeGrid } from "@components/theme/grid";
 import { Button } from "@components/ui/button";
 import { FilterDropdown } from "@components/ui/filter-dropdown";
-import { ArrowUp, Plus, SearchX, Info, ExternalLinkIcon } from "lucide-react";
+import { ArrowUp, Plus, SearchX, Info, ExternalLinkIcon, Sparkles } from "lucide-react";
 import { getCookie } from "@utils/cookies";
 import { type UserData } from "@types";
 import { useWebContext } from "@context/auth";
 import ThemeCarousel from "@components/theme/carousel";
+import HeroHighlights from "@components/page/hero-highlights";
 import { DropdownFilter } from "@components/ui/dropdown-filter";
+import { useSearch } from "@context/search";
 import { Alert, AlertDescription, AlertTitle } from "@components/ui/alert";
 import { type Theme } from "@types";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@components/ui/tabs";
 import { DiscordIcon } from "@utils/icons";
+import { Badge } from "@components/ui/badge";
 
 const Skeleton = ({ className = "", ...props }) => <div className={`animate-pulse bg-muted/30 rounded ${className}`} {...props} />;
 
@@ -44,26 +46,30 @@ const SkeletonGrid = ({ amount = 6 }) => {
 };
 
 const NoResults = () => (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-        <SearchX className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="font-semibold text-xl mb-2">No items found</h3>
-        <p className="text-muted-foreground">Try adjusting your search query or filters</p>
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="bg-muted rounded-full p-4 mb-4">
+            <SearchX className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <h3 className="text-xl font-semibold mb-2 text-primary">No results found</h3>
+        <p className="text-foreground max-w-md">Try adjusting your search query or filters to find what you're looking for.</p>
     </div>
 );
 
 function App({ themes }: { themes: Theme[] }) {
-    const [searchQuery, setSearchQuery] = useState("");
+    const { searchQuery, setSearchQuery } = useSearch();
     const [isValid, setUser] = useState<UserData | boolean>(false);
     const [filters, setFilters] = useState([]);
     const [likedThemes, setLikedThemes] = useState([]);
     const [sort, setSort] = useState("most-popular");
     const { authorizedUser, isAuthenticated, isLoading, error } = useWebContext();
     const [showScrollTop, setShowScrollTop] = useState(false);
+    const [scrolled, setScrolled] = useState(false);
 
     useEffect(() => {
         const handleScroll = () => {
-            const scrolled = window.scrollY;
-            setShowScrollTop(scrolled > 300);
+            const scrollPos = window.scrollY;
+            setShowScrollTop(scrollPos > 300);
+            setScrolled(scrollPos > 150);
         };
 
         window.addEventListener("scroll", handleScroll);
@@ -127,6 +133,12 @@ function App({ themes }: { themes: Theme[] }) {
     const themesOnly = themes.filter((t) => t.type === "theme");
     const snippetsOnly = themes.filter((t) => t.type === "snippet");
 
+    // Most popular themes for header highlights (sorted by downloads desc)
+    const popularThemes = [...themesOnly]
+        .map((t) => ({ ...t, downloads: t.downloads ?? 0 }))
+        .sort((a, b) => b.downloads - a.downloads)
+        .slice(0, 6);
+
     const filteredThemes = isLoading
         ? []
         : themesOnly
@@ -186,103 +198,111 @@ function App({ themes }: { themes: Theme[] }) {
     };
 
     return (
-        <div className="min-h-screen bg-background">
-            <div className="container mx-auto px-4 py-6">
-                <div className={`transform transition-all duration-300 ease-in-out overflow-hidden ${searchQuery === "" ? "opacity-100 translate-y-0 max-h-[500px]" : "opacity-0 -translate-y-10 max-h-0"} hidden md:block`}>
-                    <div className="flex flex-col items-center">
-                        <div className="relative inline-flex items-center justify-center">
-                            <h2 className="text-xl font-semibold mb-3 mt-3 relative z-10">Recently Updated & Added</h2>
-                        </div>
-                        <ThemeCarousel themes={themesOnly} />
-                    </div>
-                </div>
-                <div className="mb-3 mt-8">
-                    <div className="flex justify-end mb-3">
-                        <Button variant="outline" className="mr-4 hidden md:flex md:items-center" onClick={() => window.open("https://docs.vencord.dev/installing/", "_blank")}>
-                            Install ThemeLibrary for Vencord
-                            <ExternalLinkIcon className="ml-2 h-4 w-4" />
-                        </Button>
-                        <Button disabled={isLoading} onClick={handleSubmit} className="rounded-lg font-medium bg-[#4a63b4] hover:bg-[#3f58a3] text-white">
-                            {isValid ? (
-                                <>
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Submit Theme
-                                </>
-                            ) : (
-                                <>
-                                    Connect via Discord
-                                    <DiscordIcon className="ml-2 h-4 w-4 fill-white" />
-                                </>
-                            )}
-                        </Button>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2 md:gap-4 items-start">
-                        <div className="md:col-span-2">
-                            <SearchBar onSearch={setSearchQuery} />
-                        </div>
-                        <div className="md:col-span-1">
-                            <FilterDropdown className={"hover:bg-muted"} options={allFilters} onChange={setFilters} />
-                        </div>
-                        <div className="md:col-span-1">
-                            <DropdownFilter onChange={setSort} />
-                        </div>
-                    </div>
-                </div>
+        <div className="min-h-screen">
+            <div className="relative pt-12 pb-16 md:pt-20 md:pb-24 rounded-xl overflow-hidden">
+                <div className="relative z-10">
+                    <div className={`max-w-7xl mx-auto px-4 lg:px-8 transition-all duration-300`}>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center mb-10">
+                            <div className="lg:col-span-2">
+                                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-4 text-foreground">Discord Themes & Snippets</h1>
+                                <p className="text-base md:text-lg text-foreground/80 max-w-3xl leading-relaxed mb-6">
+                                    Explore thousands of beautiful themes and CSS snippets for <span className="font-semibold text-foreground">Equicord</span> and <span className="font-semibold text-foreground">Vencord</span>. Customize your Discord experience exactly the way you like it.
+                                </p>
 
-                <Tabs defaultValue="themes" className="w-full mt-6">
-                    <div className="w-full min-h-[44px] h-4 mb-8">
-                        <TabsList className="bg-card w-full min-h-[44px] flex justify-start gap-2">
-                            <TabsTrigger value="themes" className="flex-1">
-                                Themes
-                            </TabsTrigger>
-                            <TabsTrigger value="snippets" className="flex-1">
-                                Snippets
-                            </TabsTrigger>
-                        </TabsList>
-                    </div>
-                    <TabsContent value="themes">
-                        {isLoading ? (
-                            <SkeletonGrid amount={6} />
-                        ) : error ? (
-                            <div className="text-red-500">Couldn't fetch any themes, if this error persists even after refreshing please report this error to my developer, thank you!: {error.message}</div>
-                        ) : filteredThemes.length ? (
-                            <ThemeGrid likedThemes={likedThemes as any as []} themes={filteredThemes} />
-                        ) : (
-                            <div>
-                                <NoResults /> <SkeletonGrid amount={6} />
-                            </div>
-                        )}
-                    </TabsContent>
-
-                    <TabsContent value="snippets">
-                        <div className="mb-4 text-sm text-muted-foreground"></div>
-
-                        <Alert className="bg-card text-muted-foreground border border-border rounded-2xl shadow-sm mb-4">
-                            <div className="flex items-start gap-3">
-                                <Info className="mt-4 h-5 w-5 text-white" />
-                                <div className="description mb-2">
-                                    <AlertTitle className="font-semibold text-foreground">Heads up!</AlertTitle>
-                                    <AlertDescription>Most snippets are made specifically for <a href="https://vencord.dev">Vencord</a> and may not work with other client mods.</AlertDescription>
+                                <div className="flex flex-col sm:flex-row gap-4 justify-start items-center">
+                                    <Button size="lg" className="px-6 h-12 text-base font-semibold rounded-lg" onClick={handleSubmit}>
+                                        {isValid ? (
+                                            <>
+                                                <Plus className="h-5 w-5 mr-2" />
+                                                Submit Theme
+                                            </>
+                                        ) : (
+                                            <>
+                                                <DiscordIcon className="h-5 w-5 mr-2 fill-current" />
+                                                Connect via Discord
+                                            </>
+                                        )}
+                                    </Button>
+                                    <Button size="lg" variant="outline" className="px-6 h-12 text-base font-semibold rounded-lg" onClick={() => window.open("https://equicord.org/", "_blank")}>
+                                        <ExternalLinkIcon className="h-5 w-5 mr-2" />
+                                        Get the Extension for Discord
+                                    </Button>
                                 </div>
+
+
                             </div>
-                        </Alert>
-                        {isLoading ? (
-                            <SkeletonGrid amount={6} />
-                        ) : error ? (
-                            <div className="text-red-500">Error: {error.message}</div>
-                        ) : filteredSnippets.length ? (
-                            <ThemeGrid likedThemes={likedThemes as any as []} themes={filteredSnippets} />
-                        ) : (
-                            <div>
-                                <NoResults /> <SkeletonGrid amount={6} />
+
+                            <div className="lg:col-span-1">
+                                <HeroHighlights themes={popularThemes} />
                             </div>
-                        )}
-                    </TabsContent>
-                </Tabs>
+                        </div>
+                    </div>
+                </div>
             </div>
 
+            <div className={`m-4 mb-0 transform transition-all duration-300 ease-in-out overflow-hidden ${searchQuery === "" ? "opacity-100 translate-y-0 mb-12" : "opacity-0 -translate-y-10 h-0 mb-0"}`}>
+                <div className="text-center mb-6">
+                    <h2 className="text-2xl font-semibold mb-2 text-primary mt-6">Recently Updated</h2>
+                    <p className="text-foreground">Latest themes and updates from the community</p>
+                </div>
+                <ThemeCarousel themes={themesOnly} />
+            </div>
+
+            <Tabs defaultValue="themes" className="w-full mb-8">
+                <TabsList className="w-full grid grid-cols-2 h-12 rounded-none mb-8">
+                    <TabsTrigger value="themes" className="text-sm font-medium">
+                        Themes
+                    </TabsTrigger>
+                    <TabsTrigger value="snippets" className="text-sm font-medium">
+                        Snippets
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="themes" className="mt-0">
+                    {isLoading ? (
+                        <SkeletonGrid amount={6} />
+                    ) : error ? (
+                        <div className="text-center py-8">
+                            <div className="text-destructive text-lg font-medium mb-2">Oops! Something went wrong</div>
+                            <div className="text-foreground">Couldn't fetch themes. Please try refreshing the page.</div>
+                        </div>
+                    ) : filteredThemes.length ? (
+                        <ThemeGrid likedThemes={likedThemes as any as []} themes={filteredThemes} />
+                    ) : (
+                        <NoResults />
+                    )}
+                </TabsContent>
+
+                <TabsContent value="snippets" className="mt-0">
+                    <Alert className="mb-6 w-full">
+                        <Info className="h-5 w-5" />
+                        <AlertTitle>About Snippets</AlertTitle>
+                        <AlertDescription>
+                            Most snippets are made specifically for{" "}
+                            <a href="https://vencord.dev" className="text-primary hover:underline font-medium">
+                                Vencord / Equicord
+                            </a>{" "}
+                            and may not work with other client mods.
+                        </AlertDescription>
+                    </Alert>
+
+                    {isLoading ? (
+                        <SkeletonGrid amount={6} />
+                    ) : error ? (
+                        <div className="text-center py-8">
+                            <div className="text-destructive text-lg font-medium mb-2">Oops! Something went wrong</div>
+                            <div className="text-foreground">Couldn't fetch snippets. Please try refreshing the page.</div>
+                        </div>
+                    ) : filteredSnippets.length ? (
+                        <ThemeGrid likedThemes={likedThemes as any as []} themes={filteredSnippets} />
+                    ) : (
+                        <NoResults />
+                    )}
+                </TabsContent>
+            </Tabs>
+
             {showScrollTop && (
-                <Button variant="outline" size="icon" className="fixed bottom-8 right-8 rounded-full" onClick={scrollToTop}>
+                <Button variant="outline" size="icon" className="fixed bottom-6 right-6 rounded-full" onClick={scrollToTop}>
                     <ArrowUp className="h-4 w-4" />
                 </Button>
             )}

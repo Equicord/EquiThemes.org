@@ -28,6 +28,19 @@ export default async function GET(req: NextApiRequest, res: NextApiResponse) {
         res.status(500).json({ status: 401, authenticated: false });
     } else {
         // @ts-ignore
-        res.status(200).json({ status: 200, authenticated: true, user: { id: user.id, admin: user.admin ?? false, preferredColor: user.preferredColor, avatar: user.avatar, global_name: user.global_name, social: { github: user.githubAccount ?? "unverified" } } });
+        res.status(200).json({
+            status: 200,
+            authenticated: true,
+            user: {
+                id: user.id,
+                admin: user.admin ?? false,
+                preferredColor: user.preferredColor,
+                avatar: user.avatar,
+                global_name: user.global_name,
+                bannedFromSubmissions: user.bannedFromSubmissions ?? false,
+                banReason: user.banReason,
+                social: { github: user.githubAccount ?? "unverified" }
+            }
+        });
     }
 }

@@ -3,13 +3,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Textarea } from "@components/ui/textarea";
-import { useMemo, useState } from "react";
-import { ChevronLeft, Code, Edit2, Eye, Loader2Icon, Tag } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useMemo, useState, useCallback } from "react";
+import { Code as CodeIcon, Label as LabelIcon, CheckCircle as CheckIcon, Refresh as RefreshIcon } from "@mui/icons-material";
 import { cn } from "@lib/utils";
 import { ThemeCard } from "./card";
 import { Theme } from "@types";
 import { useToast } from "@hooks/use-toast";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import { Switch } from "@components/ui/switch";
 
 interface EditThemeModalProps {
     open: boolean;
@@ -20,32 +22,46 @@ interface EditThemeModalProps {
     onSave: (data: any) => Promise<void>;
 }
 
+interface FieldValidation {
+    [key: string]: boolean;
+}
+
 export function EditThemeModal({ open, onOpenChange, theme, onSave }: EditThemeModalProps) {
     const { toast } = useToast();
-    const [selectedOption, setSelectedOption] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isFetchingContent, setIsFetchingContent] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showPreview, setShowPreview] = useState(false);
+    const [useAsImport, setUseAsImport] = useState(false);
 
     const [formData, setFormData] = useState({
         name: theme?.name || "",
         description: theme?.description || "",
         version: theme?.version || "",
-        content: theme?.content || ""
+        sourceLink: theme?.source || "",
+        content: ""
     });
 
-    const hasChanges = useMemo(() => {
-        // Decode theme content only once
-        const decodedThemeContent = theme?.content ? Buffer.from(theme.content, "base64").toString() : "";
+    const decodedThemeContent = useMemo(() => {
+        return theme?.content ? Buffer.from(theme.content, "base64").toString() : "";
+    }, [theme?.content]);
 
-        // Compare trimmed values to ignore whitespace differences
-        return formData.name.trim() !== theme?.name?.trim() || formData.description.trim() !== theme?.description?.trim() || formData.version.trim() !== theme?.version?.trim() || formData.content.trim() !== decodedThemeContent.trim();
+    const fieldValidation: FieldValidation = useMemo(
+        () => ({
+            name: formData.name.trim() !== "",
+            description: formData.description.trim() !== "",
+            sourceLink: formData.sourceLink.trim() !== ""
+        }),
+        [formData]
+    );
+
+    const hasChanges = useMemo(() => {
+        return formData.name.trim() !== theme?.name?.trim() || formData.description.trim() !== theme?.description?.trim() || formData.version.trim() !== (theme?.version || "").trim() || formData.sourceLink.trim() !== (theme?.source || "").trim();
     }, [formData, theme]);
 
     const isValid = useMemo(() => {
-        return formData.name.trim() !== "" && formData.description.trim() !== "" && formData.version.trim() !== "" && formData.content.trim() !== "";
-    }, [formData]);
-
-    const options = [{ id: "name", label: "Name", icon: Edit2, current: theme?.name }, { id: "description", label: "Description", icon: Edit2, current: theme?.description }, { id: "version", label: "Version", icon: Tag, current: theme?.version }, { id: "content", label: "CSS Content", icon: Code, current: Buffer.from(theme?.content || "", "base64").toString() }, ...(hasChanges && isValid ? [{ id: "preview", label: "Preview Changes", icon: Eye }] : [])];
+        return Object.values(fieldValidation).every((v) => v === true);
+    }, [fieldValidation]);
 
     const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setError(null);
@@ -55,16 +71,85 @@ export function EditThemeModal({ open, onOpenChange, theme, onSave }: EditThemeM
         }));
     };
 
+    const fetchContentFromGitHub = useCallback(
+        async (sourceUrl: string) => {
+            try {
+                setIsFetchingContent(true);
+                setError(null);
+
+                const response = await fetch("/api/parse-source", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ url: sourceUrl })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || "Failed to fetch CSS content");
+                }
+
+                const { content: base64Content } = await response.json();
+                let content = Buffer.from(base64Content, "base64").toString("utf-8");
+
+                const headerMatch = content.match(/^((?:\/\*[\s\S]*?\*\/\s*)*)/);
+                const header = headerMatch ? headerMatch[1].trim() : "";
+
+                const versionMatch = content.match(/@version\s+([\d.]+)/i);
+                const existingVersion = versionMatch ? versionMatch[1] : null;
+
+                if (useAsImport) {
+                    const importStatement = `@import url("${sourceUrl}");`;
+                    content = header ? `${header}\n\n${importStatement}` : importStatement;
+                }
+
+                setFormData((prev) => ({
+                    ...prev,
+                    content,
+                    version: existingVersion || prev.version
+                }));
+
+                toast({
+                    title: "Success",
+                    description: "CSS content fetched successfully"
+                });
+            } catch (err) {
+                setError(err instanceof Error ? err.message : "Failed to fetch CSS content");
+                toast({
+                    title: "Error",
+                    description: err instanceof Error ? err.message : "Failed to fetch CSS content",
+                    variant: "destructive"
+                });
+            } finally {
+                setIsFetchingContent(false);
+            }
+        },
+        [useAsImport, toast]
+    );
+
     const handleSave = async () => {
         if (!hasChanges || !isValid) return;
 
         try {
             setIsLoading(true);
             setError(null);
-            await onSave(formData);
+            const saveData: any = {
+                name: formData.name,
+                description: formData.description,
+                version: formData.version,
+                sourceLink: formData.sourceLink,
+                last_updated: new Date().toISOString()
+            };
+
+            if (formData.content) {
+                saveData.content = formData.content;
+            }
+
+            await onSave(saveData);
             toast({
-                title: "Changes submitted",
-                description: "Your changes have been submitted for review"
+                title: "Success",
+                description: "Your theme has been updated successfully"
             });
             onOpenChange(false);
         } catch {
@@ -79,130 +164,162 @@ export function EditThemeModal({ open, onOpenChange, theme, onSave }: EditThemeM
         }
     };
 
-    const renderEditView = () => {
-        const commonHeaderClasses = "flex items-center space-x-4 mb-6 border-muted border-b pb-4";
-        const inputClasses = "min-h-[200px] font-mono text-sm";
+    const FormField = ({ label, field, required = false, placeholder, isTextarea = false }: { label: string; field: keyof typeof formData; required?: boolean; placeholder: string; isTextarea?: boolean }) => {
+        const isValid = fieldValidation[field];
+        const hasChanged = field === "sourceLink" ? formData.sourceLink.trim() !== (theme?.source || "").trim() : (formData[field] as string).trim() !== ((theme?.[field as keyof typeof theme] as string) || "").trim();
 
         return (
-            <AnimatePresence mode="wait">
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.2 }}>
-                    {selectedOption ? (
-                        <div className="space-y-4">
-                            <div className={commonHeaderClasses}>
-                                <Button variant="ghost" size="sm" onClick={() => setSelectedOption(null)}>
-                                    <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <h3 className="text-lg font-medium">Edit {options.find((opt) => opt.id === selectedOption)?.label}</h3>
-                            </div>
-
-                            <div className="space-y-6 px-1">
-                                {selectedOption !== "preview" && (
-                                    <div className="space-y-2">
-                                        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-                                        <label className="text-sm font-medium">Current Value:</label>
-                                        <div className="text-sm text-muted-foreground bg-muted p-2 rounded">{options.find((opt) => opt.id === selectedOption)?.current || "None"}</div>
-                                    </div>
-                                )}
-
-                                <div className="space-y-2">
-                                    {selectedOption !== "preview" && (
-                                        // eslint-disable-next-line jsx-a11y/label-has-associated-control
-                                        <label className="text-sm font-medium">New Value:</label>
-                                    )}
-                                    {selectedOption === "name" && <Input value={formData.name} onChange={handleChange("name")} placeholder="Enter theme name" className="text-lg" required />}
-                                    {selectedOption === "description" && <Textarea value={formData.description} onChange={handleChange("description")} placeholder="Describe your theme..." className={inputClasses} required />}
-                                    {selectedOption === "version" && <Input value={formData.version} onChange={handleChange("version")} placeholder="e.g. 1.0.0" required />}
-                                    {selectedOption === "content" && (
-                                        <Textarea
-                                            value={formData.content} // Remove Buffer.from here
-                                            onChange={handleChange("content")}
-                                            placeholder="Paste your CSS here..."
-                                            className={cn(inputClasses, "font-mono")}
-                                            required
-                                        />
-                                    )}
-                                    {selectedOption === "preview" && (
-                                        <div className="space-y-4">
-                                            {/* @ts-ignore */}
-                                            <ThemeCard
-                                                theme={{
-                                                    ...theme,
-                                                    name: formData.name,
-                                                    description: formData.description,
-                                                    version: formData.version,
-                                                    content: formData.content,
-                                                    last_updated: new Date().toISOString(),
-                                                    id: "preview",
-                                                    type: "preview"
-                                                }}
-                                                disableDownloads
-                                            />
-                                            <Button onClick={handleSave} disabled={isLoading || !hasChanges || !isValid} className="w-full">
-                                                {isLoading ? (
-                                                    <>
-                                                        <Loader2Icon className="h-4 w-4 animate-spin mr-2" />
-                                                        Submitting...
-                                                    </>
-                                                ) : (
-                                                    "Submit for Review"
-                                                )}
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            {options.map((option) => {
-                                const Icon = option.icon;
-                                const hasFieldChange =
-                                    option.id === "content"
-                                        ? formData.content.trim() !==
-                                          Buffer.from(theme?.content || "", "base64")
-                                              .toString()
-                                              .trim()
-                                        : typeof formData[option.id as keyof typeof formData] === "string" && typeof theme?.[option.id as keyof typeof theme] === "string"
-                                          ? (formData[option.id as keyof typeof formData] as string).trim() !== (theme?.[option.id as keyof typeof theme] as string).trim()
-                                          : formData[option.id as keyof typeof formData] !== theme?.[option.id as keyof typeof theme];
-
-                                return (
-                                    <Button key={option.id} variant="outline" className={cn("h-auto p-4 justify-start space-x-4", !hasFieldChange && "border-primary")} onClick={() => setSelectedOption(option.id)}>
-                                        <Icon className={cn("h-5 w-5", !hasFieldChange && "text-primary")} />
-                                        <div className="text-left">
-                                            <span>{option.label}</span>
-                                            {!hasFieldChange && <span className="block text-xs text-primary">Modified</span>}
-                                        </div>
-                                    </Button>
-                                );
-                            })}
-                        </div>
-                    )}
-                </motion.div>
-            </AnimatePresence>
+            <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold text-foreground">
+                        {label}
+                        {required && <span className="text-red-500 ml-1">*</span>}
+                    </label>
+                    {hasChanged && <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded">Modified</span>}
+                </div>
+                {isTextarea ? (
+                    <Textarea value={formData[field] as string} onChange={handleChange(field)} placeholder={placeholder} className={cn("min-h-[120px] font-mono text-sm", "border-muted focus:border-primary transition-colors", !isValid && required && "border-red-500")} required={required} />
+                ) : (
+                    <Input value={formData[field] as string} onChange={handleChange(field)} placeholder={placeholder} className={cn("border-muted focus:border-primary transition-colors", !isValid && required && "border-red-500")} required={required} />
+                )}
+                {!isValid && required && <p className="text-xs text-red-500 font-medium">{label} is required</p>}
+            </div>
         );
     };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[825px] max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
+            <DialogContent 
+                className="sm:max-w-5xl max-h-[95vh] overflow-y-auto p-0 flex flex-col w-full" 
+                tabIndex={-1}
+            >
+                <DialogHeader className="px-6 pt-6 pb-4 mb-6 border-b border-muted">
                     <DialogTitle className="text-2xl font-bold">Edit Theme</DialogTitle>
                 </DialogHeader>
 
-                <div className="py-4">
-                    {renderEditView()}
-                    {error && <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-md text-sm">{error}</div>}
-                </div>
+                <div className={cn("grid gap-0 flex-1 overflow-y-auto", showPreview ? "lg:grid-cols-2" : "grid-cols-1")}>
+                    <div className="space-y-6 px-6 pb-6" onClick={(e) => e.stopPropagation()}>
+                        <FormField label="Theme Name" field="name" required placeholder="My Awesome Theme" />
 
-                {selectedOption && selectedOption !== "preview" && (
-                    <div className="flex justify-end pt-4 border-muted border-t">
-                        <Button onClick={() => setSelectedOption("preview")} disabled={!hasChanges || !isValid} className="space-x-2">
-                            <Eye className="h-4 w-4" />
-                            <span>Preview Changes</span>
-                        </Button>
+                        <FormField label="Description" field="description" required placeholder="A brief description of your theme..." isTextarea />
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField label="Version" field="version" placeholder="1.0.0" />
+
+                            <FormField label="Source Link" field="sourceLink" required placeholder="https://github.com/..." />
+                        </div>
+
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-semibold text-foreground">
+                                    CSS Content
+                                    <span className="text-red-500 ml-1">*</span>
+                                </label>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-muted-foreground">Use as import?</span>
+                                        <Switch checked={useAsImport} onCheckedChange={setUseAsImport} disabled={!formData.content} />
+                                    </div>
+                                    <Button size="sm" variant="outline" onClick={() => fetchContentFromGitHub(formData.sourceLink)} disabled={!formData.sourceLink.trim() || isFetchingContent} className="text-xs">
+                                        <RefreshIcon className="h-3 w-3 mr-1" />
+                                        {isFetchingContent ? "Fetching..." : "Fetch Content"}
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {formData.content || decodedThemeContent ? (
+                                <div className="codeblock rounded-xl border border-border/30 bg-muted/10 p-4 relative overflow-hidden">
+                                    <SyntaxHighlighter
+                                        language="css"
+                                        style={vscDarkPlus}
+                                        customStyle={{
+                                            maxHeight: 400,
+                                            borderRadius: "0.75rem",
+                                            fontSize: "0.875rem",
+                                            background: "transparent",
+                                            margin: 0,
+                                            padding: "1rem",
+                                            fontFamily: '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
+                                        }}
+                                        codeTagProps={{ style: { fontFamily: "inherit" } }}
+                                        wrapLongLines={true}
+                                    >
+                                        {formData.content || decodedThemeContent}
+                                    </SyntaxHighlighter>
+                                </div>
+                            ) : (
+                                <div className={cn("min-h-[120px] w-full bg-muted/50 border border-muted rounded p-4 font-mono text-sm", "flex items-center justify-center text-muted-foreground")}>CSS content will appear here once fetched from GitHub</div>
+                            )}
+
+                            {!formData.content && !decodedThemeContent && <p className="text-xs text-amber-600 font-medium">Supports GitHub, GitLab, and any raw CSS file URL. Use the "Fetch Content" button to load CSS.</p>}
+                        </div>
+
+                        {error && <div className="bg-red-500/10 border border-red-500/20 text-red-600 p-3 rounded-lg text-sm font-medium">{error}</div>}
+
+                        <div className="flex gap-3 pt-4">
+                            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading} className="flex-1">
+                                Cancel
+                            </Button>
+                            <Button onClick={() => setShowPreview(!showPreview)} variant={showPreview ? "default" : "secondary"} disabled={!isValid} className="flex-1">
+                                Preview
+                            </Button>
+                            <Button onClick={handleSave} disabled={isLoading || !hasChanges || !isValid} className="flex-1">
+                                {isLoading ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-muted border-t-current mr-2" />
+                                        Updating...
+                                    </>
+                                ) : (
+                                    "Update Theme"
+                                )}
+                            </Button>
+                        </div>
                     </div>
-                )}
+
+                    {showPreview && (
+                        <div className="hidden lg:flex flex-col space-y-4 pt-0 lg:border-l lg:border-muted lg:pl-8 px-6 pb-6 overflow-hidden max-h-[calc(95vh-120px)]">
+                            <h4 className="text-sm font-semibold">Preview</h4>
+                            <div className="overflow-auto">
+                                {/* @ts-ignore */}
+                                <ThemeCard
+                                    theme={{
+                                        ...theme,
+                                        name: formData.name,
+                                        description: formData.description,
+                                        version: formData.version,
+                                        source: formData.sourceLink,
+                                        content: formData.content || decodedThemeContent,
+                                        last_updated: new Date().toISOString(),
+                                        id: "preview",
+                                        type: "preview"
+                                    }}
+                                    disableDownloads
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {showPreview && (
+                        <div className="lg:hidden col-span-1 space-y-4 pt-4 border-t border-muted mt-4 px-6 pb-6">
+                            <h4 className="text-sm font-semibold">Preview</h4>
+                            {/* @ts-ignore */}
+                            <ThemeCard
+                                theme={{
+                                    ...theme,
+                                    name: formData.name,
+                                    description: formData.description,
+                                    version: formData.version,
+                                    source: formData.sourceLink,
+                                    content: formData.content || decodedThemeContent,
+                                    last_updated: new Date().toISOString(),
+                                    id: "preview",
+                                    type: "preview"
+                                }}
+                                disableDownloads
+                            />
+                        </div>
+                    )}
+                </div>
             </DialogContent>
         </Dialog>
     );
