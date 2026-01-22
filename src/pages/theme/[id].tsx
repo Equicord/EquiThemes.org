@@ -12,7 +12,7 @@ import { type Theme } from "@types";
 
 export const getStaticPaths: GetStaticPaths = async () => {
 	const res = await fetch(
-		"https://raw.githubusercontent.com/Equicord/themesApi/refs/heads/main/themes.json"
+		"https://raw.githubusercontent.com/Equicord/EquiThemesAPI/refs/heads/main/themes.json"
 	);
 	const themes = await res.json();
 
@@ -28,7 +28,7 @@ export const getStaticPaths: GetStaticPaths = async () => {
 
 export const getStaticProps = (async context => {
 	const res = await fetch(
-		"https://raw.githubusercontent.com/Equicord/themesApi/refs/heads/main/themes.json"
+		"https://raw.githubusercontent.com/Equicord/EquiThemesAPI/refs/heads/main/themes.json"
 	);
 	const themes = await res.json();
 	return { props: { themes }, revalidate: 60 };

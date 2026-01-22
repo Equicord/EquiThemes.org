@@ -257,7 +257,7 @@ export default async function GET(req: NextApiRequest, res: NextApiResponse) {
     res.setHeader("Content-Type", "application/json");
 
     if (!authKey) {
-        res.status(500).json({ status: 500, message: "Failed to generate a user token, if you think that this is a bug feel free to open an issue at https://github.com/Equicord/themesApi", error: "MISSING OAUTH2 TOKEN" });
+        res.status(500).json({ status: 500, message: "Failed to generate a user token, if you think that this is a bug feel free to open an issue at https://github.com/Equicord/EquiThemesAPI", error: "MISSING OAUTH2 TOKEN" });
     } else {
         if (callback) res.redirect((callback as string) + `?token=${authKey}`);
         else res.status(200).json({ status: 200, token: authKey, user: { id: user.id, avatar: user.avatar, preferredColor: user.banner_color, githubAccount } });
