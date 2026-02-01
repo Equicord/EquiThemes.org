@@ -108,7 +108,7 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
                             },
                             {
                                 name: "Dashboard",
-                                value: `[View](${SERVER}/theme/submitted/view/${id})\n[Admin Panel](${SERVER}/admin)`
+                                value: `[View](${SERVER}/theme/submitted/view/${id}) | [Theme Submissions](https://themes.equicord.org/theme/submitted) | [Admin Panel](${SERVER}/admin)`
                             }
                         ],
                         footer: {
