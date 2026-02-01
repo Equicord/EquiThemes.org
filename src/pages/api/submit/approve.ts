@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { isAuthed } from "@utils/auth";
 import { ObjectId } from "mongodb";
 import { validateInvite } from "@utils/extractInvite";
+import { SERVER } from "@constants";
 
 export default async function POST(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "POST") {
@@ -169,7 +170,7 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
             })),
             tags: tags.length > 0 ? [...tags] : [],
             version: version ? version[1] : "1.0.0",
-            thumbnail_url: `https://cdn.themes.equicord.org/theme/${theme.title.replace(/ /g, "-")}_${totalThemes + 1}.${imageExt}`,
+            thumbnail_url: `${SERVER}/theme/${theme.title.replace(/ /g, "-")}_${totalThemes + 1}.${imageExt}`,
             release_date: new Date().toISOString(),
             guild: guildInfo,
             content: theme.themeContent,

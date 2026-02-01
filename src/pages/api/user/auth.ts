@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import type { APIConnection as Connection, APIUser as User } from "discord-api-types/v10";
 import clientPromise from "@utils/db";
 import { createHash, randomBytes } from "crypto";
+import { SERVER } from "@constants";
 
 const WEBHOOK_LOGS_URL = process.env.WEBHOOK_LOGS;
 
@@ -93,7 +94,7 @@ export default async function GET(req: NextApiRequest, res: NextApiResponse) {
             client_secret: process.env.AUTH_DISCORD_SECRET,
             code: code as string,
             grant_type: "authorization_code",
-            redirect_uri: process.env.NODE_ENV === "production" ? (!callback ? "https://themes.equicord.org/api/user/auth" : "https://themes.equicord.org/api/user/auth?callback=/auth/callback") : "http://localhost:4321/api/user/auth?callback=/auth/callback",
+            redirect_uri: (!callback ? `${SERVER}/api/user/auth` : `${SERVER}/api/user/auth?callback=/auth/callback`),
             scope: "identify,connections"
         }).toString()
     });

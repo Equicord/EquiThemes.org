@@ -1,5 +1,6 @@
 "use cache";
 
+import { SERVER } from "@constants";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export default async function GET(req: NextApiRequest, res: NextApiResponse) {
@@ -13,5 +14,5 @@ export default async function GET(req: NextApiRequest, res: NextApiResponse) {
     res.setHeader("Content-Disposition", "inline");
     res.setHeader("Cache-Control", "public, max-age=1200");
 
-    res.redirect(301, `https://cdn.themes.equicord.org/theme/${decodedName}`);
+    res.redirect(301, `${SERVER}/theme/${decodedName}`);
 }

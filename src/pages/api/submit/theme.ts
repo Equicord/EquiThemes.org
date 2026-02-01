@@ -78,8 +78,8 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
         const submission = {
             ...req.body,
             themeContent,
-            fileUrl: req.body.file && req.body.file.startsWith('data:image') ? req.body.file : (req.body.fileUrl || "https://cdn.themes.equicord.org/not-found.png"),
-            file: req.body.file && req.body.file.startsWith('data:image') ? req.body.file : (req.body.fileUrl || "https://cdn.themes.equicord.org/not-found.png"),
+            fileUrl: req.body.file && req.body.file.startsWith('data:image') ? req.body.file : (req.body.fileUrl || `${SERVER}/not-found/image.png`),
+            file: req.body.file && req.body.file.startsWith('data:image') ? req.body.file : (req.body.fileUrl || `${SERVER}/not-found/image.png`),
             submittedAt: new Date(),
             submittedBy: user.id,
             state: "pending"

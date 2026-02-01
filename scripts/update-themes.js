@@ -2,7 +2,7 @@
 const fs = require('fs');
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const API_URL = "https://api.themes.equicord.org/themes";
+const API_URL = "https://themes.equicord.org/api/themes";
 const RATE_LIMIT_DELAY = 500;
 
 async function generatePermanentGitHubLink(url) {

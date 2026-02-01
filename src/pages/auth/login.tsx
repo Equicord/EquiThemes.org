@@ -1,12 +1,9 @@
 import { useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
+import { SERVER } from "@constants";
 
-const development = process.env.NODE_ENV === "development";
-
-const redirect = development
-    ? "https://discord.com/oauth2/authorize?client_id=1464006702125940736&response_type=code&redirect_uri=http://localhost:3000/api/user/auth?callback={CALLBACK}&scope=connections identify"
-    : "https://discord.com/oauth2/authorize?client_id=1464006702125940736&response_type=code&redirect_uri=https://themes.equicord.org/api/user/auth?callback={CALLBACK}&scope=connections identify";
+const redirect = `https://discord.com/oauth2/authorize?client_id=1464006702125940736&response_type=code&redirect_uri=${SERVER}/api/user/auth?callback={CALLBACK}&scope=connections%20identify`;
 
 export default function AuthCallback() {
     const router = useRouter();
