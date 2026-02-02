@@ -1,29 +1,35 @@
-name: Fetch Themes
+name: Update Themes
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '0 */4 * * *'
-
-permissions:
-      contents: write
+    - cron: '0 0 1 * *'
+  workflow_dispatch:
 
 jobs:
-  fetch-themes:
+  update-themes:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
-      - name: Fetch themes from API
-        run: |
-          curl -s https://themes.equicord.org/api/themes -o themes.json
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run theme update script
+        run: node scripts/update-themes.js
+        env:
+          GH_TOKEN: ${{ secrets.ETOKEN }}
 
       - name: Commit and push changes
         run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add themes.json
-          git commit -m 'pull themes'
+          git commit -m "Auto-update themes" || echo "No changes to commit"
           git push

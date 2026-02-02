@@ -1,7 +1,4 @@
-/* eslint-disable jsx-a11y/label-has-associated-control */
-"use client";
-
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useWebContext } from "@context/auth";
 import { getCookie } from "@utils/cookies";
 import { Check as CheckIcon, OpenInNew } from "@mui/icons-material";
@@ -39,7 +36,25 @@ interface Theme {
     submittedBy: string;
 }
 
-async function ThemeList() {
+export async function getServerSideProps({ params }) {
+    const client = await clientPromise;
+    const db = client.db("submittedThemesDatabase");
+
+    const doc = await db
+        .collection("pending")
+        .findOne(
+            { _id: new ObjectId(params.id), state: "rejected" },
+            { projection: { reason: 1, _id: 0 } }
+        );
+
+    return {
+        props: {
+            rejectReason: doc?.reason ?? null,
+        },
+    };
+}
+
+export default function ThemeList({ rejectReason }) {
     const { authorizedUser, isAuthenticated, isLoading } = useWebContext();
     const router = useRouter();
     const { id } = router.query;
@@ -51,7 +66,6 @@ async function ThemeList() {
     const [rejectionReason, setRejectionReason] = useState("");
     const [banUser, setBanUser] = useState(false);
     const [banReason, setBanReason] = useState("");
-    const [rejectReason, setRejectReason] = useState<string | null>(null);
 
     const handleAddTag = () => {
         if (newTag && selectedTags.length < 5 && !selectedTags.includes(newTag)) {
@@ -179,33 +193,6 @@ async function ThemeList() {
         }
     };
 
-    const fetchRejectReason = async () => {
-        try {
-            if (!id || theme.state !== "rejected") return null;
-
-            const client = await clientPromise;
-            const submittedDb = client.db("submittedThemesDatabase");
-            const pendingCollection = submittedDb.collection("pending");
-
-            const doc = await pendingCollection.findOne(
-                { _id: new ObjectId(id as string) },
-                { projection: { reason: 1, _id: 0 } }
-            );
-
-            return doc?.reason ?? null;
-        } catch (err) {
-            console.error(err);
-            return null;
-        }
-    };
-
-    useEffect(() => {
-        (async () => {
-            const reason = await fetchRejectReason();
-            setRejectReason(reason);
-        })();
-    }, [id, theme.state]);
-
     useEffect(() => {
         if (theme?.file && theme?.themeContent) {
             const analyzeTags = async () => {
@@ -289,7 +276,7 @@ async function ThemeList() {
                                                     <span>Submitted {theme?.submittedAt && formatDistanceToNow(new Date(theme.submittedAt))} ago</span>
                                             </div>
                                         </div>
-                                            <Badge variant="outline" className={cn("text-sm px-3 py-1", theme?.state === "approved" && "bg-green-500/10 text-green-600 border-green-500/20", themes?.state === "rejected" && "bg-red-500/10 text-red-600 border-red-500/20", themes?.state === "pending" && "bg-yellow-500/10 text-yellow-600 border-yellow-500/20")}>
+                                            <Badge variant="outline" className={cn("text-sm px-3 py-1", theme?.state === "approved" && "bg-green-500/10 text-green-600 border-green-500/20", theme?.state === "rejected" && "bg-red-500/10 text-red-600 border-red-500/20", theme?.state === "pending" && "bg-yellow-500/10 text-yellow-600 border-yellow-500/20")}>
                                                 {theme?.state === "approved" ? "Approved" : theme?.state === "rejected" ? "Rejected" : "Pending Review"}
                                         </Badge>
                                     </div>
@@ -301,9 +288,11 @@ async function ThemeList() {
                                     <div className="lg:col-span-3 space-y-8">
                                         <div className="prose dark:prose-invert max-w-none">
                                             <h3 className="text-xl font-semibold mb-4">Description</h3>
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]} className="text-muted-foreground">
+                                            <div className="text-muted-foreground">
+                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                                     {theme?.description}
-                                            </ReactMarkdown>
+                                                </ReactMarkdown>
+                                            </div>
                                         </div>
 
                                         <div>
@@ -443,7 +432,9 @@ async function ThemeList() {
                                                             <p>
                                                                 This theme has been {theme.state} and cannot be modified.
                                                                 {rejectReason && (
-                                                                    <> Reason: {rejectReason}.</>
+                                                                    <div>
+                                                                        <>Reason: {rejectReason.endsWith('.') ? rejectReason : `${rejectReason}.`}</>
+                                                                    </div>
                                                                 )}
                                                             </p>
                                                     </Alert>
@@ -460,5 +451,3 @@ async function ThemeList() {
         </div>
     );
 }
-
-export default ThemeList;
