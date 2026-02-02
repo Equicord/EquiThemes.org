@@ -17,6 +17,8 @@ import { toast } from "@hooks/use-toast";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@lib/utils";
+import clientPromise from "@utils/db";
+import { ObjectId } from "mongodb";
 
 interface Theme {
     _id: string;
@@ -37,11 +39,11 @@ interface Theme {
     submittedBy: string;
 }
 
-function ThemeList() {
+async function ThemeList() {
     const { authorizedUser, isAuthenticated, isLoading } = useWebContext();
     const router = useRouter();
     const { id } = router.query;
-    const [themes, setTheme] = useState<Theme>();
+    const [theme, setTheme] = useState<Theme>();
     const [loading, setLoading] = useState(true);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const [newTag, setNewTag] = useState("");
@@ -49,6 +51,7 @@ function ThemeList() {
     const [rejectionReason, setRejectionReason] = useState("");
     const [banUser, setBanUser] = useState(false);
     const [banReason, setBanReason] = useState("");
+    const [rejectReason, setRejectReason] = useState<string | null>(null);
 
     const handleAddTag = () => {
         if (newTag && selectedTags.length < 5 && !selectedTags.includes(newTag)) {
@@ -83,7 +86,7 @@ function ThemeList() {
 
             toast({
                 title: "Approved",
-                description: `Approved the theme '${themes.title}'! You may need to wait a few minutes for the changes to take effect.`
+                description: `Approved the theme '${theme.title}'! You may need to wait a few minutes for the changes to take effect.`
             });
 
             router.push("/theme/submitted");
@@ -120,7 +123,7 @@ function ThemeList() {
 
             toast({
                 title: "Rejected",
-                description: `Rejected the theme '${themes.title}'!${banUser ? " User has been banned from submissions." : ""}`
+                description: `Rejected the theme '${theme.title}'!${banUser ? " User has been banned from submissions." : ""}`
             });
         } catch (err) {
             toast({
@@ -176,16 +179,43 @@ function ThemeList() {
         }
     };
 
+    const fetchRejectReason = async () => {
+        try {
+            if (!id || theme.state !== "rejected") return null;
+
+            const client = await clientPromise;
+            const submittedDb = client.db("submittedThemesDatabase");
+            const pendingCollection = submittedDb.collection("pending");
+
+            const doc = await pendingCollection.findOne(
+                { _id: new ObjectId(id as string) },
+                { projection: { reason: 1, _id: 0 } }
+            );
+
+            return doc?.reason ?? null;
+        } catch (err) {
+            console.error(err);
+            return null;
+        }
+    };
+
     useEffect(() => {
-        if (themes?.file && themes?.themeContent) {
+        (async () => {
+            const reason = await fetchRejectReason();
+            setRejectReason(reason);
+        })();
+    }, [id, theme.state]);
+
+    useEffect(() => {
+        if (theme?.file && theme?.themeContent) {
             const analyzeTags = async () => {
-                const contentTags = analyzeThemeContent(themes.themeContent);
-                const imageTags = await analyzeImage(themes.file);
+                const contentTags = analyzeThemeContent(theme.themeContent);
+                const imageTags = await analyzeImage(theme.file);
                 setSuggestedTags([...new Set([...contentTags, ...imageTags])]);
             };
             analyzeTags();
         }
-    }, [themes]);
+    }, [theme]);
 
     useEffect(() => {
         if (!isLoading && (!isAuthenticated || !authorizedUser?.admin)) {
@@ -254,13 +284,13 @@ function ThemeList() {
                                 <div className="flex flex-col gap-4">
                                     <div className="flex items-start justify-between">
                                         <div className="space-y-1">
-                                            <CardTitle className="text-3xl font-bold">{themes?.title}</CardTitle>
+                                                <CardTitle className="text-3xl font-bold">{theme?.title}</CardTitle>
                                             <div className="flex items-center gap-2 text-muted-foreground">
-                                                <span>Submitted {themes?.submittedAt && formatDistanceToNow(new Date(themes.submittedAt))} ago</span>
+                                                    <span>Submitted {theme?.submittedAt && formatDistanceToNow(new Date(theme.submittedAt))} ago</span>
                                             </div>
                                         </div>
-                                        <Badge variant="outline" className={cn("text-sm px-3 py-1", themes?.state === "approved" && "bg-green-500/10 text-green-600 border-green-500/20", themes?.state === "rejected" && "bg-red-500/10 text-red-600 border-red-500/20", themes?.state === "pending" && "bg-yellow-500/10 text-yellow-600 border-yellow-500/20")}>
-                                            {themes?.state === "approved" ? "Approved" : themes?.state === "rejected" ? "Rejected" : "Pending Review"}
+                                            <Badge variant="outline" className={cn("text-sm px-3 py-1", theme?.state === "approved" && "bg-green-500/10 text-green-600 border-green-500/20", themes?.state === "rejected" && "bg-red-500/10 text-red-600 border-red-500/20", themes?.state === "pending" && "bg-yellow-500/10 text-yellow-600 border-yellow-500/20")}>
+                                                {theme?.state === "approved" ? "Approved" : theme?.state === "rejected" ? "Rejected" : "Pending Review"}
                                         </Badge>
                                     </div>
                                 </div>
@@ -272,14 +302,14 @@ function ThemeList() {
                                         <div className="prose dark:prose-invert max-w-none">
                                             <h3 className="text-xl font-semibold mb-4">Description</h3>
                                             <ReactMarkdown remarkPlugins={[remarkGfm]} className="text-muted-foreground">
-                                                {themes?.description}
+                                                    {theme?.description}
                                             </ReactMarkdown>
                                         </div>
 
                                         <div>
                                             <h3 className="text-xl font-semibold mb-4">Theme Preview</h3>
-                                            {themes?.file ? (
-                                                <img src={themes.fileUrl} alt={themes.title} className="rounded-lg border border-muted shadow-sm w-full hover:shadow-md transition-shadow" />
+                                                {theme?.file ? (
+                                                    <img src={theme.fileUrl} alt={theme.title} className="rounded-lg border border-muted shadow-sm w-full hover:shadow-md transition-shadow" />
                                             ) : (
                                                 <div className="rounded-lg border border-muted bg-muted/30 h-48 flex items-center justify-center">
                                                     <p className="text-muted-foreground">No preview available</p>
@@ -291,10 +321,10 @@ function ThemeList() {
                                             <h3 className="text-xl font-semibold mb-4">Theme Content</h3>
                                             <div className="rounded-lg border border-muted bg-muted/30 p-4 relative">
                                                 <pre className="text-sm overflow-auto max-h-[400px]">
-                                                    <code>{Buffer.from(themes?.themeContent || "", "base64").toString()}</code>
+                                                        <code>{Buffer.from(theme?.themeContent || "", "base64").toString()}</code>
                                                 </pre>
                                             </div>
-                                            <a href={themes?.sourceLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-2 text-sm text-muted-foreground hover:text-primary transition-colors">
+                                                <a href={theme?.sourceLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-2 text-sm text-muted-foreground hover:text-primary transition-colors">
                                                 <OpenInNew sx={{ width: 16, height: 16 }} />
                                                 View source code
                                             </a>
@@ -306,7 +336,7 @@ function ThemeList() {
                                                 <div>
                                                     <h3 className="text-xl font-semibold mb-4">Contributors</h3>
                                                     <div className="flex flex-wrap gap-2">
-                                                        {Object.values(themes?.validatedUsers || {}).map((user: any) => (
+                                                            {Object.values(theme?.validatedUsers || {}).map((user: any) => (
                                                             <div key={user.id} className="inline-flex items-center gap-2 bg-muted/30 rounded-full px-3 py-1">
                                                                 <img src={`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`} alt={user.username} className="w-6 h-6 rounded-full" />
                                                                 <span className="text-sm">{user.username}</span>
@@ -315,7 +345,7 @@ function ThemeList() {
                                                     </div>
                                                 </div>
 
-                                                {themes?.state === "pending" && (
+                                                    {theme?.state === "pending" && (
                                                     <>
                                                         <div>
                                                             <h3 className="text-xl font-semibold mb-4">Theme Tags</h3>
@@ -408,9 +438,14 @@ function ThemeList() {
                                                     </>
                                                 )}
 
-                                                {themes?.state !== "pending" && (
-                                                    <Alert variant={themes.state === "approved" ? "default" : "destructive"}>
-                                                        <p>This theme has been {themes.state === "approved" ? "approved" : "rejected"} and cannot be modified.</p>
+                                                    {theme?.state !== "pending" && (
+                                                        <Alert variant={theme.state === "approved" ? "default" : "destructive"}>
+                                                            <p>
+                                                                This theme has been {theme.state} and cannot be modified.
+                                                                {rejectReason && (
+                                                                    <> Reason: {rejectReason}.</>
+                                                                )}
+                                                            </p>
                                                     </Alert>
                                                 )}
                                             </div>
