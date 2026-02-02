@@ -112,9 +112,11 @@ export default function MarkdownInput({ className, onChange, onBlur, lines = 5, 
                     <div className="h-[200px] bg-zinc-900 transition-all duration-200 rounded-b-lg">
                         {isPreview ? (
                             <div className="p-4 prose prose-invert max-w-none h-full overflow-auto">
-                                <ReactMarkdown className="whitespace-pre-wrap" remarkPlugins={[remarkGfm]} skipHtml>
-                                    {content}
-                                </ReactMarkdown>
+                                <div className="whitespace-pre-wrap">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>
+                                        {content}
+                                    </ReactMarkdown>
+                                </div>
                             </div>
                         ) : (
                             <>

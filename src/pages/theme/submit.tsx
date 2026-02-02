@@ -335,7 +335,7 @@ export default function SubmitPage() {
                                         }}
                                         onBlur={(e) => validateAndAddUser(e.target.value)}
                                         placeholder="Discord User ID"
-                                        ref={(el) => (inputRefs.current[index] = el)}
+                                        ref={(el) => { inputRefs.current[index] = el; }}
                                     />
                                 )}
                             </div>

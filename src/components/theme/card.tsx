@@ -121,9 +121,11 @@ export function ThemeCard({ theme, likedThemes, className, noFooter = false, dis
                         <div className="w-1/2 p-5 flex flex-col justify-between">
                             <div>
                                 <h3 className="text-lg font-semibold tracking-tight text-primary mb-2">{theme.name}</h3>
-                                <ReactMarkdown className="description text-sm text-foreground leading-relaxed line-clamp-3" remarkPlugins={[remarkGfm]}>
-                                    {theme.description}
-                                </ReactMarkdown>
+                                <div className="description text-sm text-foreground leading-relaxed line-clamp-3">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {theme.description}
+                                    </ReactMarkdown>
+                                </div>
                             </div>
                             <div className="flex flex-col mt-4">
                                 <div className="flex justify-between items-center">
@@ -211,9 +213,11 @@ export function ThemeCard({ theme, likedThemes, className, noFooter = false, dis
                         </CardHeader>
                         <CardContent className="p-5 flex-grow">
                             <h3 className="text-lg font-semibold tracking-tight text-primary mb-2">{theme.name}</h3>
-                            <ReactMarkdown className="description line-clamp-3 text-sm text-foreground leading-relaxed" remarkPlugins={[remarkGfm]}>
-                                {theme.description}
-                            </ReactMarkdown>
+                            <div className="description line-clamp-3 text-sm text-foreground leading-relaxed">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    {theme.description}
+                                </ReactMarkdown>
+                            </div>
                         </CardContent>
                         {!noFooter && (
                             <CardFooter className="p-5 pt-0 mt-auto">

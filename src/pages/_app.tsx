@@ -1,7 +1,7 @@
 import React from "react";
 import { AuthProvider } from "@context/auth";
 import ThemeProvider from "@components/theme-provider";
-import blob from "/public/favicon.ico";
+import blob from "../../public/favicon.ico";
 import Image from "next/image";
 import "./theme.css";
 import { Toaster } from "@components/ui/toaster";
@@ -16,7 +16,7 @@ function App({ Component, pageProps }) {
     return (
         <AuthProvider>
             <Head>
-                <meta http-equiv="content-language" content="en" />
+                <meta httpEquiv="content-language" content="en" />
                 <meta name="viewport" content="initial-scale=1, width=device-width" />
                 <meta name="keywords" content="discord, theme, custom, discord themes, Vencord, equicord" />
                 <meta name="theme-color" content="#1a1b26" />

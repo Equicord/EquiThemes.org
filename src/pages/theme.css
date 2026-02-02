@@ -154,6 +154,7 @@ button:not([class*="outline"]):hover, .btn:not([class*="outline"]):hover {
 }
 
 .no-select {
+    -webkit-user-select: none;
     user-select: none;
     cursor: pointer;
 }

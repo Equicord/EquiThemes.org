@@ -19,6 +19,7 @@ import { getCookie } from "@utils/cookies";
 import ImageWithFallback from "@components/ui/image-fallback";
 import { Separator } from "@components/ui/separator";
 import Head from "next/head";
+import { SERVER } from "@constants";
 
 interface ThemesResponse {
     themes: Theme[];
@@ -586,7 +587,7 @@ export default function User() {
                 <meta property="og:title" content={`${userThemes.user.global_name || "User Profile"} - Discord Themes`} />
                 <meta property="og:description" content={`Check out ${userThemes.user.global_name || "this user"}'s profile and their amazing Discord themes!`} />
                 <meta property="og:image" content={primarySrc} />
-                <meta property="og:url" content={`${process.env.NEXT_PUBLIC_BASE_URL}/users/${user}`} />
+                <meta property="og:url" content={`${SERVER}/users/${user}`} />
                 <meta name="twitter:card" content="summary_large_image" />
             </Head>
 

@@ -80,6 +80,11 @@ module.exports = {
                 protocol: "https",
                 hostname: "cdn.themes.equicord.org",
                 pathname: "**"
+            },
+            {
+                protocol: "https",
+                hostname: "themes.equicord.org",
+                pathname: "**"
             }
         ]
     },

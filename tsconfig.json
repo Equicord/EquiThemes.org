@@ -16,7 +16,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "baseUrl": ".",
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "paths": {
       "@types": [
         "src/types.ts"
@@ -41,7 +41,7 @@
       ],
       "@context/auth": [
         "src/context/auth.tsx"
-      ],
+      ]
     },
     "target": "ES2017"
   },
@@ -49,8 +49,9 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    "next.config.js"
-, "src/pages/_document.tsx"  ],
+    "next.config.js",
+    "src/pages/_document.tsx"
+  ],
   "exclude": [
     "node_modules"
   ]

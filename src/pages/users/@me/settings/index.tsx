@@ -443,14 +443,24 @@ function UserData() {
                                     <field.icon className="h-4 w-4" aria-hidden="true" />
                                 </div>
                                 <div className="flex-1">
-                                    <dt className="text-sm font-medium leading-none mb-1">{field.label}</dt>
-                                    {field.href ? (
-                                        <a href={field.href} target="_blank" rel="noreferrer" className="text-sm text-accent underline">
-                                            <dd className="text-sm text-muted-foreground">{field.value || "—"}</dd>
-                                        </a>
-                                    ) : (
-                                        <dd className="text-sm text-muted-foreground">{field.value || "—"}</dd>
-                                    )}
+                                    <dl>
+                                        <dt className="text-sm font-medium leading-none mb-1">{field.label}</dt>
+                                        <dd className="text-sm text-muted-foreground">
+                                            {field.href ? (
+                                                <a
+                                                    title={field.label}
+                                                    href={field.href}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="text-sm text-accent underline"
+                                                >
+                                                    {field.value || "—"}
+                                                </a>
+                                            ) : (
+                                                field.value || "—"
+                                            )}
+                                        </dd>
+                                    </dl>
                                 </div>
                             </div>
                         ))}
