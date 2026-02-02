@@ -37,19 +37,29 @@ interface Theme {
 }
 
 export async function getServerSideProps({ params }) {
+    if (!params?.id) {
+        return { notFound: true };
+    }
+
     const client = await clientPromise;
     const db = client.db("submittedThemesDatabase");
 
-    const doc = await db
-        .collection("pending")
-        .findOne(
-            { _id: new ObjectId(params.id), state: "rejected" },
-            { projection: { reason: 1, _id: 0 } }
-        );
+    let doc = null;
+    try {
+        doc = await db
+            .collection("pending")
+            .findOne(
+                { _id: new ObjectId(params.id), state: "rejected" },
+                { projection: { reason: 1, _id: 0 } }
+            );
+    } catch (err) {
+        console.error("Invalid ObjectId:", err);
+        return { notFound: true };
+    }
 
     return {
         props: {
-            rejectReason: doc?.reason ?? null,
+            rejectReason: typeof doc?.reason === "string" ? doc.reason : null,
         },
     };
 }
@@ -192,6 +202,13 @@ export default function ThemeList({ rejectReason }) {
             setSelectedTags([...selectedTags, tag]);
         }
     };
+
+    useEffect(() => {
+        if (!id) {
+            router.replace("/theme/submitted");
+        }
+    }, [id]);
+
 
     useEffect(() => {
         if (theme?.file && theme?.themeContent) {
@@ -431,7 +448,7 @@ export default function ThemeList({ rejectReason }) {
                                                         <Alert variant={theme.state === "approved" ? "default" : "destructive"}>
                                                             <p>
                                                                 This theme has been {theme.state} and cannot be modified.
-                                                                {rejectReason && (
+                                                                {rejectReason && typeof rejectReason === "string" && (
                                                                     <div>
                                                                         <>Reason: {rejectReason.endsWith('.') ? rejectReason : `${rejectReason}.`}</>
                                                                     </div>
