@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import { useWebContext } from "@context/auth";
 import { getCookie } from "@utils/cookies";
@@ -448,7 +450,7 @@ export default function ThemeList({ rejectReason }) {
                                                         <Alert variant={theme.state === "approved" ? "default" : "destructive"}>
                                                             <p>
                                                                 This theme has been {theme.state} and cannot be modified.
-                                                                {rejectReason && typeof rejectReason === "string" && (
+                                                                {rejectReason && (
                                                                     <div>
                                                                         <>Reason: {rejectReason.endsWith('.') ? rejectReason : `${rejectReason}.`}</>
                                                                     </div>
