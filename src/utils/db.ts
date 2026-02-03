@@ -1,6 +1,6 @@
 import { MongoClient } from "mongodb";
 
-const uri = process.env.MONGODB_URI as string;
+const uri = process.env.MONGODB_URI;
 const options = {};
 
 declare global {
@@ -13,10 +13,14 @@ class Singleton {
     private client: MongoClient;
     private clientPromise: Promise<MongoClient>;
     private constructor() {
-        this.client = new MongoClient(uri, options);
-        this.clientPromise = this.client.connect();
-        if (process.env.NODE_ENV === "development") {
-            global._mongoClientPromise = this.clientPromise;
+        if (uri) {
+            this.client = new MongoClient(uri, options);
+            this.clientPromise = this.client.connect();
+            if (process.env.NODE_ENV === "development") {
+                global._mongoClientPromise = this.clientPromise;
+            }
+        } else {
+            this.clientPromise = Promise.resolve({} as MongoClient);
         }
     }
 
