@@ -4,11 +4,12 @@ import { isAuthed } from "@utils/auth";
 import { DEV_SERVER, SERVER } from "@constants";
 import { UserData } from "@types";
 import { parseSourceUrl } from "@utils/sourceParser";
+import { ErrorHandler } from "@lib/errorHandler";
 
 const WEBHOOK_SUBMISSION_URL = process.env.WEBHOOK_SUBMISSIONS;
 const WEBHOOK_IMG_UPLOADER_URL = process.env.WEBHOOK_IMG_UPLOADER;
 
-export default async function POST(req: NextApiRequest, res: NextApiResponse) {
+async function POST(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "POST") {
         return res.status(405).json({ message: "Method not allowed", wants: "POST" });
     }
@@ -178,3 +179,5 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
         });
     }
 }
+
+export default ErrorHandler(POST);

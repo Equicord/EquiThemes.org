@@ -1,10 +1,10 @@
 "use cache";
 
+import { ErrorHandler } from "@lib/errorHandler";
 import clientPromise from "@utils/db";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { isAuthed } from "@utils/auth";
 
-export default async function GET(req: NextApiRequest, res: NextApiResponse) {
+async function GET(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "GET") {
         return res.status(405).json({ message: "Method not allowed", wants: "GET" });
     }
@@ -136,3 +136,5 @@ export default async function GET(req: NextApiRequest, res: NextApiResponse) {
     res.setHeader("Content-Type", "application/json");
     res.status(200).json(data);
 }
+
+export default ErrorHandler(GET);

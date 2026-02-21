@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { generateKey } from "@utils/auth";
 import clientPromise from "@utils/db";
+import { ErrorHandler } from "@lib/errorHandler";
 
-export default async function POST(req: NextApiRequest, res: NextApiResponse) {
+async function POST(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "POST") {
         return res.status(405).json({ message: "Method not allowed", wants: "POST" });
     }
@@ -39,3 +40,5 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
         res.status(200).json({ status: 200, token: key.toString() });
     }
 }
+
+export default ErrorHandler(POST);

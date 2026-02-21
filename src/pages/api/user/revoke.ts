@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import clientPromise from "@utils/db";
+import { ErrorHandler } from "@lib/errorHandler";
 
-export default async function DELETE(req: NextApiRequest, res: NextApiResponse) {
+async function DELETE(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "DELETE") {
         return res.status(405).json({ message: "Method not allowed", wants: "DELETE" });
     }
@@ -47,3 +48,5 @@ export default async function DELETE(req: NextApiRequest, res: NextApiResponse) 
         res.status(200).json({ status: 200, authorized: false, message: "Deleted user entry" });
     }
 }
+
+export default ErrorHandler(DELETE);

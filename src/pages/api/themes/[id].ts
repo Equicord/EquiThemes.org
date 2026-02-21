@@ -1,8 +1,9 @@
 import clientPromise from "@utils/db";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { isAuthed } from "@utils/auth";
+import { ErrorHandler } from "@lib/errorHandler";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
     const { id } = req.query;
     const { authorization } = req.headers;
 
@@ -133,3 +134,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
     }
 }
+
+export default ErrorHandler(handler);

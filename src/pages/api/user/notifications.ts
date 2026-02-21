@@ -1,8 +1,9 @@
 import clientPromise from "@utils/db";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { isAuthed } from "@utils/auth";
+import { ErrorHandler } from "@lib/errorHandler";
 
-export default async function GET(req: NextApiRequest, res: NextApiResponse) {
+async function GET(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "GET") {
         return res.status(405).json({ message: "Method not allowed", wants: "GET" });
     }
@@ -45,3 +46,5 @@ export default async function GET(req: NextApiRequest, res: NextApiResponse) {
         });
     }
 }
+
+export default ErrorHandler(GET);

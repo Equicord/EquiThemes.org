@@ -3,6 +3,7 @@ import type { APIConnection as Connection, APIUser as User } from "discord-api-t
 import clientPromise from "@utils/db";
 import { createHash, randomBytes } from "crypto";
 import { SERVER } from "@constants";
+import { ErrorHandler } from "@lib/errorHandler";
 
 const WEBHOOK_LOGS_URL = process.env.WEBHOOK_LOGS;
 
@@ -44,7 +45,7 @@ async function fetchGitHubAccount(token: string): Promise<string | null> {
     return githubConnection ? githubConnection.name : null;
 }
 
-export default async function GET(req: NextApiRequest, res: NextApiResponse) {
+async function GET(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "GET") {
         return res.status(405).json({ message: "Method not allowed", wants: "GET" });
     }
@@ -264,3 +265,5 @@ export default async function GET(req: NextApiRequest, res: NextApiResponse) {
         else res.status(200).json({ status: 200, token: authKey, user: { id: user.id, avatar: user.avatar, preferredColor: user.banner_color, githubAccount } });
     }
 }
+
+export default ErrorHandler(GET);

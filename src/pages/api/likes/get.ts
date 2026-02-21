@@ -1,13 +1,14 @@
 import clientPromise from "@utils/db";
 import { isAuthed } from "@utils/auth";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { ErrorHandler } from "@lib/errorHandler";
 
 interface LikeEntry {
     themeId: number;
     userIds: string[];
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "GET") {
         return res.status(405).json({ message: "Method not allowed", wants: "GET" });
     }
@@ -52,3 +53,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
     }
 }
+
+export default ErrorHandler(handler);

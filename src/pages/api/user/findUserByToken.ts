@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { isAuthed } from "@utils/auth";
+import { ErrorHandler } from "@lib/errorHandler";
 
-export default async function GET(req: NextApiRequest, res: NextApiResponse) {
+async function GET(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "GET") {
         return res.status(405).json({ message: "Method not allowed", wants: "GET" });
     }
@@ -28,3 +29,5 @@ export default async function GET(req: NextApiRequest, res: NextApiResponse) {
         res.status(200).json({ status: 200, user });
     }
 }
+
+export default ErrorHandler(GET);

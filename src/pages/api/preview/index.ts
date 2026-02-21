@@ -3,8 +3,9 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { ErrorHandler } from "@lib/errorHandler";
 
-export default async function GET(req: NextApiRequest, res: NextApiResponse) {
+async function GET(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "GET") {
         return res.status(405).json({ message: "Method not allowed", wants: "GET" });
     }
@@ -209,3 +210,5 @@ export default async function GET(req: NextApiRequest, res: NextApiResponse) {
     res.setHeader("Content-Type", "text/html");
     res.status(200).send(htmlContent);
 }
+
+export default ErrorHandler(GET);

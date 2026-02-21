@@ -1,8 +1,9 @@
 import clientPromise from "@utils/db";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { isAuthed } from "@utils/auth";
+import { ErrorHandler } from "@lib/errorHandler";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "POST") {
         return res.status(405).json({ message: "Method not allowed", wants: "POST" });
     }
@@ -59,3 +60,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         res.status(500).json({ status: 500, message: "Internal Server Error" });
     }
 }
+
+export default ErrorHandler(handler);

@@ -2,9 +2,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import clientPromise from "@utils/db";
 import { Collection } from "mongodb";
 import { type Theme } from "@types";
+import { ErrorHandler } from "@lib/errorHandler";
 const WEBHOOK_LOGS_URL = process.env.WEBHOOK_LOGS;
 
-export default async function DELETE(req: NextApiRequest, res: NextApiResponse) {
+async function DELETE(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "DELETE") {
         return res.status(405).json({ message: "Method not allowed", wants: "DELETE" });
     }
@@ -115,3 +116,5 @@ export default async function DELETE(req: NextApiRequest, res: NextApiResponse) 
         authorized: false
     });
 }
+
+export default ErrorHandler(DELETE);

@@ -1,9 +1,10 @@
 "use cache";
 
 import { SERVER } from "@constants";
+import { ErrorHandler } from "@lib/errorHandler";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export default async function GET(req: NextApiRequest, res: NextApiResponse) {
+async function GET(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "GET") {
         return res.status(405).json({ message: "Method not allowed", wants: "GET" });
     }
@@ -16,3 +17,5 @@ export default async function GET(req: NextApiRequest, res: NextApiResponse) {
 
     res.redirect(301, `${SERVER}/theme/${decodedName}`);
 }
+
+export default ErrorHandler(GET);

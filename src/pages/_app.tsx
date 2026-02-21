@@ -1,4 +1,3 @@
-import React from "react";
 import { AuthProvider } from "@context/auth";
 import ThemeProvider from "@components/theme-provider";
 import blob from "../../public/favicon.ico";
@@ -11,36 +10,9 @@ import Head from "next/head";
 import { Analytics } from "@vercel/analytics/react";
 import { SearchProvider, useSearch } from "@context/search";
 import { SearchBar } from "@components/search-bar";
-import { useEffect } from "react";
 import ErrorBoundary from "@components/error-boundary";
 
 function App({ Component, pageProps }) {
-    useEffect(() => {
-        const handleUnhandledRejection = (event) => {
-            fetch("/api/error", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: event.reason?.message, stack: event.reason?.stack }),
-            })
-        };
-
-        const handleError = (event) => {
-            fetch("/api/error", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: event.error?.message, stack: event.error?.stack }),
-            })
-        };
-
-        window.addEventListener("unhandledrejection", handleUnhandledRejection);
-        window.addEventListener("error", handleError);
-
-        return () => {
-            window.removeEventListener("unhandledrejection", handleUnhandledRejection);
-            window.removeEventListener("error", handleError);
-        };
-    }, []);
-
     return (
         <ErrorBoundary>
             <AuthProvider>

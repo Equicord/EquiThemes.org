@@ -1,6 +1,7 @@
 import PQueue from "p-queue";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { isAuthed } from "@utils/auth";
+import { ErrorHandler } from "@lib/errorHandler";
 
 const queue = new PQueue({
     intervalCap: 45,
@@ -32,7 +33,7 @@ async function validateDiscordUser(userId: string) {
     }
 }
 
-export default async function POST(req: NextApiRequest, res: NextApiResponse) {
+async function POST(req: NextApiRequest, res: NextApiResponse) {
     try {
         if (req.method !== "POST") {
             return res.status(405).json({ message: "Method not allowed", wants: "POST" });
@@ -78,3 +79,5 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
         return res.status(500).json({ status: 500, message: "Internal server error" });
     }
 }
+
+export default ErrorHandler(POST);

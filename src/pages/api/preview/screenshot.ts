@@ -2,6 +2,7 @@
 
 import { NextApiRequest, NextApiResponse } from "next";
 import { SERVER } from "@constants";
+import { ErrorHandler } from "@lib/errorHandler";
 export const dynamic = "force-dynamic";
 
 const CHROMIUM_PATH = "https://vomrghiulbmrfvmhlflk.supabase.co/storage/v1/object/public/chromium-pack/chromium-v123.0.0-pack.tar";
@@ -36,7 +37,7 @@ async function getBrowser() {
     return cachedBrowser;
 }
 
-export default async function GET(req: NextApiRequest, res: NextApiResponse) {
+async function GET(req: NextApiRequest, res: NextApiResponse) {
     const { url } = req.query;
 
     if (!url || typeof url !== "string") {
@@ -77,3 +78,5 @@ export default async function GET(req: NextApiRequest, res: NextApiResponse) {
         if (page) await page.close();
     }
 }
+
+export default ErrorHandler(GET);

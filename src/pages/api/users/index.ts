@@ -2,8 +2,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import clientPromise from "@utils/db";
 import { Collection } from "mongodb";
 import { type Theme } from "@types";
+import { ErrorHandler } from "@lib/errorHandler";
 
-export default async function GET(req: NextApiRequest, res: NextApiResponse) {
+async function GET(req: NextApiRequest, res: NextApiResponse) {
 	if (req.method !== "GET") {
 		return res
 			.status(405)
@@ -94,3 +95,5 @@ export default async function GET(req: NextApiRequest, res: NextApiResponse) {
 		discord: discordData
 	});
 }
+
+export default ErrorHandler(GET);

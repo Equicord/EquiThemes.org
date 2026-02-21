@@ -2,8 +2,9 @@ import clientPromise from "@utils/db";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { isAuthed } from "@utils/auth";
 import { ObjectId } from "mongodb";
+import { ErrorHandler } from "@lib/errorHandler";
 
-export default async function POST(req: NextApiRequest, res: NextApiResponse) {
+async function POST(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "POST") {
         return res.status(405).json({ message: "Method not allowed", wants: "POST" });
     }
@@ -126,3 +127,5 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
         });
     }
 }
+
+export default ErrorHandler(POST);
