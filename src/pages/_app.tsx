@@ -17,21 +17,19 @@ import ErrorBoundary from "@components/error-boundary";
 function App({ Component, pageProps }) {
     useEffect(() => {
         const handleUnhandledRejection = (event) => {
-            console.error("Unhandled Promise Rejection:", event.reason);
-            fetch("/api/log-error", {
+            fetch("/api/error", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ message: event.reason?.message, stack: event.reason?.stack }),
-            }).catch(console.error);
+            })
         };
 
         const handleError = (event) => {
-            console.error("Global Window Error:", event.error);
-            fetch("/api/log-error", {
+            fetch("/api/error", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ message: event.error?.message, stack: event.error?.stack }),
-            }).catch(console.error);
+            })
         };
 
         window.addEventListener("unhandledrejection", handleUnhandledRejection);
