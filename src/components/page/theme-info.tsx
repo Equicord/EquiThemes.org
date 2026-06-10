@@ -24,7 +24,7 @@ import { Download as DownloadIcon, Favorite as HeartIcon, FavoriteBorder as Hear
 
 const Skeleton = ({ className = "", ...props }) => <div className={`animate-pulse bg-muted/30 rounded ${className}`} {...props} />;
 
-export default function Component({ id, theme }: { id?: string; theme: Theme }) {
+export default function Component({ id, theme }: { id?: string; theme: Theme; }) {
     const [isDownloaded, setIsDownloaded] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
     const [likedThemes, setLikedThemes] = useState();
@@ -92,13 +92,11 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
                 title: "Success",
                 description: "Theme updated successfully"
             });
-            
-            
+
             if (mutateThemes) {
                 await mutateThemes();
             }
-            
-            
+
             window.location.reload();
         } catch (error: any) {
             toast({
@@ -183,6 +181,12 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
         setTimeout(() => {
             setIsDownloaded(false);
         }, 5000);
+    };
+
+    const handleInstallEquicord = (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        window.location.href = `equicord://install-theme?id=${theme.id}`;
     };
 
     const handleLike = (themeId) => async () => {
@@ -302,20 +306,6 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
         }
     ];
 
-    const ThemeStats = () => (
-        <div className="grid grid-cols-2 gap-4 mt-6 select-none">
-            {statsItems.map(({ icon: Icon, label, value }) => (
-                <Card key={label} className="p-4">
-                    <CardContent className="p-0 flex flex-col items-center">
-                        <Icon className="h-5 w-5 text-muted-foreground mb-2" />
-                        <p className="text-xl font-bold">{value}</p>
-                        <p className="text-xs text-muted-foreground">{label}</p>
-                    </CardContent>
-                </Card>
-            ))}
-        </div>
-    );
-
     return (
         <>
             <Head>
@@ -331,10 +321,12 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
                 <meta property="og:url" content="https://themes.equicord.org" />
                 <meta
                     property="og:site_name"
-                    content={`${
+                    content={`
+                        ${
                         // @ts-ignore
                         theme.author?.discord_name ? `@${theme.author.discord_name}` : theme.author.map((x) => `@${x.discord_name}`).join(", ")
-                    } - https://themes.equicord.org`}
+                        } 
+                        - https://themes.equicord.org`}
                 />
 
                 <meta name="twitter:card" content="summary_large_image" />
@@ -384,10 +376,10 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
                                         <CardContent className="p-6">
                                             <div className="flex justify-between items-center mb-4">
                                                 <h2 className="text-xl font-semibold text-primary">Source Code</h2>
-                                                <Button 
-                                                    variant="outline" 
-                                                    size="sm" 
-                                                    onClick={() => handleCopyCode(decodeThemeContent(theme.content))} 
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => handleCopyCode(decodeThemeContent(theme.content))}
                                                     className="flex items-center gap-2 hover:text-foreground hover:border-foreground"
                                                 >
                                                     {isCopied ? (
@@ -433,6 +425,9 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
                             <Card className="border-border/40">
                                 <CardContent className="p-6">
                                     <div className="space-y-3">
+                                        <Button size="lg" variant="secondary" onClick={handleInstallEquicord} className="w-full h-12 text-base font-medium border border-border/50">
+                                            One Click Install
+                                        </Button>
                                         <Button size="lg" disabled={isLoading || isDownloaded} onClick={handleDownload} className="w-full h-12 text-base font-medium">
                                             {isDownloaded ? (
                                                 <>
@@ -467,7 +462,7 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
                                                     className={`w-full h-11 ${
                                                         // @ts-ignore
                                                         likedThemes?.likes?.find((t) => t.themeId === theme.id)?.hasLiked ? "text-red-500 border-red-200 hover:bg-red-50" : "hover:text-red-500 hover:border-red-200"
-                                                    }`}
+                                                        }`}
                                                     onClick={handleLike(theme.id)}
                                                 >
                                                     {
@@ -507,17 +502,17 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
                                         <CardContent className="p-6">
                                             <h3 className="font-semibold mb-4">Author Options</h3>
                                             <div className="space-y-2">
-                                                <Button 
-                                                    variant="outline" 
-                                                    className="w-full hover:text-foreground hover:border-foreground" 
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full hover:text-foreground hover:border-foreground"
                                                     onClick={() => setEditModalOpen(true)}
                                                 >
                                                     <EditIcon className="mr-2 h-4 w-4" />
                                                     Edit Theme
                                                 </Button>
-                                                <Button 
-                                                    variant="outline" 
-                                                    className="w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors" 
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
                                                     onClick={() => setDeleteDialogOpen(true)}
                                                 >
                                                     <DeleteIcon className="mr-2 h-4 w-4" />

@@ -72,6 +72,19 @@ export const ThemeCard = memo(({ theme, likedThemes, className, noFooter = false
         }, 5000);
     };
 
+    const handleInstallEquicord = (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        setIsDownloaded(true);
+
+        window.location.href = `equicord://install-theme?id=${theme.id}`;
+
+        setTimeout(() => {
+            setIsDownloaded(false);
+        }, 5000);
+    };
+
     const handleMouseEnter = () => {
         setIsOpen(true);
     };
@@ -160,19 +173,34 @@ export const ThemeCard = memo(({ theme, likedThemes, className, noFooter = false
                                             </div>
                                         </div>
                                         {!disableDownloads && (
-                                            <Button disabled={isDownloaded} size="sm" className="h-8" onClick={handleDownload}>
-                                                {isDownloaded ? (
-                                                    <>
-                                                        <Check className="mr-1.5 h-3.5 w-3.5" />
-                                                        Downloaded
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Download className="mr-1.5 h-3.5 w-3.5" />
-                                                        Download
-                                                    </>
-                                                )}
-                                            </Button>
+                                            <div className="flex gap-2">
+                                                <Button disabled={isDownloaded} size="sm" variant="secondary" className="h-8" onClick={handleInstallEquicord}>
+                                                    O{isDownloaded ? (
+                                                        <>
+                                                            <Check className="mr-1.5 h-3.5 w-3.5" />
+                                                            Installed
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Download className="mr-1.5 h-3.5 w-3.5" />
+                                                            One Click Install
+                                                        </>
+                                                    )}
+                                                </Button>
+                                                <Button disabled={isDownloaded} size="sm" className="h-8" onClick={handleDownload}>
+                                                    {isDownloaded ? (
+                                                        <>
+                                                            <Check className="mr-1.5 h-3.5 w-3.5" />
+                                                            Downloaded
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Download className="mr-1.5 h-3.5 w-3.5" />
+                                                            Download
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -235,19 +263,24 @@ export const ThemeCard = memo(({ theme, likedThemes, className, noFooter = false
                                         </div>
                                     </div>
                                     {!disableDownloads && (
-                                        <Button disabled={isDownloaded} size="sm" className="h-8" onClick={handleDownload}>
-                                            {isDownloaded ? (
-                                                <>
-                                                    <Check className="mr-1.5 h-3.5 w-3.5" />
-                                                    Downloaded
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Download className="mr-1.5 h-3.5 w-3.5" />
-                                                    Download
-                                                </>
-                                            )}
-                                        </Button>
+                                        <div className="flex gap-2">
+                                            <Button size="sm" variant="secondary" className="h-8" onClick={handleInstallEquicord}>
+                                                Equicord
+                                            </Button>
+                                            <Button disabled={isDownloaded} size="sm" className="h-8" onClick={handleDownload}>
+                                                {isDownloaded ? (
+                                                    <>
+                                                        <Check className="mr-1.5 h-3.5 w-3.5" />
+                                                        Downloaded
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Download className="mr-1.5 h-3.5 w-3.5" />
+                                                        Download
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </div>
                                     )}
                                 </div>
                             </CardFooter>
@@ -255,7 +288,7 @@ export const ThemeCard = memo(({ theme, likedThemes, className, noFooter = false
                     </>
                 )}
             </Link>
-        </Card>
+        </Card >
     );
 });
 
