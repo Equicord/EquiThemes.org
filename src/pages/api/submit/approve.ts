@@ -84,14 +84,36 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
             imageExt = mimeMatch[1];
             base64Content = theme.file.split(",")[1];
             isBase64 = true;
-        } else if (!theme.file.startsWith("http")) {
+        } else if (theme.file.startsWith("http")) {
+            const imgRes = await fetch(theme.file);
+            if (!imgRes.ok) {
+                return res.status(400).json({
+                    status: 400,
+                    message: "Failed to fetch remote image"
+                });
+            }
+            const arrayBuffer = await imgRes.arrayBuffer();
+            base64Content = Buffer.from(arrayBuffer).toString("base64");
+
+            const contentType = imgRes.headers.get("content-type");
+            if (contentType && contentType.startsWith("image/")) {
+                imageExt = contentType.split("/")[1];
+            } else {
+                const urlExt = theme.file.split(".").pop();
+                if (urlExt && ["png", "jpg", "jpeg", "gif", "webp"].includes(urlExt.toLowerCase())) {
+                    imageExt = urlExt.toLowerCase();
+                }
+            }
+            isBase64 = true;
+        } else {
             return res.status(400).json({
                 status: 400,
                 message: "Invalid image format"
             });
         }
 
-        const fileName = `${theme.title}_${totalThemes + 1}.${imageExt}`;
+        const safeTitle = theme.title.replace(/ /g, "-");
+        const fileName = `${safeTitle}_${totalThemes + 1}.${imageExt}`;
 
         if (isBase64) {
             const fs = require('fs');
@@ -164,7 +186,7 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
             })),
             tags: tags.length > 0 ? [...tags] : [],
             version: version ? version[1] : "1.0.0",
-            thumbnail_url: isBase64 ? `${SERVER}/theme/${theme.title.replace(/ /g, "-")}_${totalThemes + 1}.${imageExt}` : theme.file,
+            thumbnail_url: isBase64 ? `${SERVER}/thumbnails/${fileName}` : theme.file,
             release_date: new Date().toISOString(),
             guild: guildInfo,
             content: theme.themeContent,

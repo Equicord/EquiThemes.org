@@ -49,6 +49,8 @@ export const ThemeCard = memo(({ theme, likedThemes, className, noFooter = false
     const [isLiked, setLiked] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const [isDownloaded, setIsDownloaded] = useState(false);
+    const [imgSrc, setImgSrc] = useState(theme.thumbnail_url);
+    const [useFallback, setUseFallback] = useState(false);
 
     useEffect(() => {
         if (likedThemes?.likes?.length) {
@@ -80,6 +82,17 @@ export const ThemeCard = memo(({ theme, likedThemes, className, noFooter = false
         setIsOpen(false);
     };
 
+    const handleImageError = () => {
+        if (!useFallback) {
+            setUseFallback(true);
+            const filename = theme.thumbnail_url.split('/').pop();
+            if (filename) {
+                const fallbackFilename = decodeURIComponent(filename).replace(/-/g, ' ');
+                setImgSrc(`https://raw.githubusercontent.com/Equicord/Equithemes.org/master/public/thumbnails/${encodeURIComponent(fallbackFilename)}`);
+            }
+        }
+    };
+
     const lastUpdated = theme.last_updated ?? theme.release_date;
     const relativeTime = useMemo(() => timeSince(new Date(lastUpdated)), [lastUpdated]);
 
@@ -87,12 +100,16 @@ export const ThemeCard = memo(({ theme, likedThemes, className, noFooter = false
         <Card className={cn("group overflow-hidden flex flex-col h-full transition-all duration-200 hover:shadow-lg hover:-translate-y-1 border-border/40 bg-card/50 backdrop-blur-sm", className)}>
             <Link href={`/theme/${Number(theme.id)}`} className="h-full flex flex-col">
                 {diagonal ? (
-                    <div className="flex">
-                        <div className="w-1/2 relative" onMouseLeave={handleMouseLeave}>
-                            <div className="aspect-[16/9] overflow-hidden bg-muted/20 relative rounded-2xl">
-                                <Image draggable={false} width={854} height={480} src={theme.thumbnail_url} alt={theme.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 select-none rounded-2xl" />
+                    <div className="flex h-full flex-1">
+                        <div className="w-1/2 relative flex flex-col" onMouseLeave={handleMouseLeave}>
+                            <div className="flex-1 overflow-hidden bg-muted/20 relative rounded-2xl">
+                                {useFallback ? (
+                                    <img draggable={false} src={imgSrc} alt={theme.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 select-none rounded-2xl" />
+                                ) : (
+                                    <Image draggable={false} width={854} height={480} src={imgSrc} alt={theme.name} onError={handleImageError} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 select-none rounded-2xl" />
+                                )}
                             </div>
-                            <div className="absolute top-3 left-3 z-2 flex flex-wrap gap-2">
+                            <div className="absolute bottom-3 left-3 z-2 flex flex-wrap gap-2">
                                 {theme.tags?.slice(0, 3).map((tag) => (
                                     <Button key={tag} variant="outline" size="sm" className="text-xs h-7 px-3 bg-background/90 backdrop-blur-md border-border/50 hover:bg-background/60 hover:border-border/80 rounded-2xl" onClick={(e) => e.preventDefault()}>
                                         {tag}
@@ -183,7 +200,11 @@ export const ThemeCard = memo(({ theme, likedThemes, className, noFooter = false
                     <>
                         <CardHeader className="p-0 relative" onMouseLeave={handleMouseLeave}>
                             <div className="aspect-[16/9] overflow-hidden bg-muted/20 relative rounded-t-2xl">
-                                <Image draggable={false} width={854} height={480} src={theme.thumbnail_url} alt={theme.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 select-none" />
+                                {useFallback ? (
+                                    <img draggable={false} src={imgSrc} alt={theme.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 select-none" />
+                                ) : (
+                                    <Image draggable={false} width={854} height={480} src={imgSrc} alt={theme.name} onError={handleImageError} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 select-none" />
+                                )}
                             </div>
                             <div className="absolute bottom-3 left-3 z-2 flex flex-wrap gap-2">
                                 {theme.tags?.slice(0, 3).map((tag) => (
