@@ -186,7 +186,7 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
             })),
             tags: tags.length > 0 ? [...tags] : [],
             version: version ? version[1] : "1.0.0",
-            thumbnail_url: isBase64 ? `${SERVER}/thumbnails/${fileName}` : theme.file,
+            thumbnail_url: isBase64 ? `https://raw.githubusercontent.com/Equicord/Equithemes.org/master/public/thumbnails/${fileName}` : theme.file,
             release_date: new Date().toISOString(),
             guild: guildInfo,
             content: theme.themeContent,

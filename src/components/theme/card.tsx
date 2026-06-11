@@ -87,8 +87,7 @@ export const ThemeCard = memo(({ theme, likedThemes, className, noFooter = false
             setUseFallback(true);
             const filename = theme.thumbnail_url.split('/').pop();
             if (filename) {
-                const fallbackFilename = decodeURIComponent(filename).replace(/-/g, ' ');
-                setImgSrc(`https://raw.githubusercontent.com/Equicord/Equithemes.org/master/public/thumbnails/${encodeURIComponent(fallbackFilename)}`);
+                setImgSrc(`https://raw.githubusercontent.com/Equicord/Equithemes.org/master/public/thumbnails/${filename}`);
             }
         }
     };
