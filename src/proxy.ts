@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const isDev = process.env.NODE_ENV === "development";
+const logRequests = process.env.LOG_REQUESTS === "true";
 
 function getClientIp(req: NextRequest): string {
     return (
@@ -20,7 +20,7 @@ function logRequest(req: NextRequest) {
 }
 
 export async function proxy(req: NextRequest) {
-    if (isDev) logRequest(req);
+    if (logRequests) logRequest(req);
 
     if (req.method === "OPTIONS") {
         return new NextResponse("", { status: 200 });
