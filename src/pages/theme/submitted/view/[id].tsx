@@ -64,7 +64,7 @@ export async function getServerSideProps({ params, req }) {
         if (!theme) return { notFound: true };
 
         const isAdmin = user?.admin || false;
-        const isOwner = user?.username === theme.user;
+        const isOwner = user?.id === theme.submittedBy;
 
         if (!isAdmin && !isOwner) {
             return {

@@ -66,7 +66,7 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
             if (!theme) {
                 return res.status(404).json({ message: "Submission not found" });
             }
-            if (!user.admin && theme.user !== user.username) {
+            if (!user.admin && theme.submittedBy !== user.id) {
                 return res.status(403).json({ message: "Forbidden" });
             }
             return res.status(200).json(theme);
@@ -75,7 +75,7 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
         }
     }
 
-    const query = user.admin ? {} : { user: user.username };
+    const query = user.admin ? {} : { submittedBy: user.id };
     const themes = await themesCollection.find(query, { projection: { themeContent: 0, file: 0, fileUrl: 0 } }).toArray();
 
     res.setHeader("Content-Type", "application/json");
