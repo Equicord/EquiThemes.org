@@ -7,7 +7,6 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Badge } from "@components/ui/badge";
 import { Card } from "@components/ui/card";
-import { Alert } from "@components/ui/alert";
 
 interface Submission {
     title: string;
@@ -31,7 +30,7 @@ const SubmissionsPage: React.FC = () => {
     const router = useRouter();
 
     useEffect(() => {
-      if (isLoading) return;
+        if (isLoading) return;
         const fetchSubmissions = async () => {
             setLoading(true);
             setError(null);
@@ -52,6 +51,8 @@ const SubmissionsPage: React.FC = () => {
                     throw new Error("Failed to fetch submissions");
                 }
                 const data = await submissionsResponse.json();
+                const order = { pending: 0, approved: 1 };
+                data.sort((a, b) => (order[a.state] ?? 2) - (order[b.state] ?? 2));
                 setSubmissions(data);
             } catch (err: any) {
                 setError(err.message || "Unknown error");
@@ -65,11 +66,11 @@ const SubmissionsPage: React.FC = () => {
     const getStateIcon = (state: string) => {
         switch (state) {
             case "approved":
-                return <CheckCircleIcon className="text-green-500 mr-1 w-4 h-4" aria-label="Approved" />;
+                return <CheckCircleIcon sx={{ display: "flex", width: 16, height: 16 }} className="!text-green-500" aria-label="Approved" />;
             case "pending":
-                return <HourglassIcon className="text-yellow-500 mr-1 w-4 h-4" aria-label="Pending" />;
+                return <HourglassIcon sx={{ display: "flex", width: 16, height: 16 }} className="!text-yellow-500" aria-label="Pending" />;
             default:
-                return <XCircleIcon className="text-red-500 mr-1 w-4 h-4" aria-label="Rejected" />;
+                return <XCircleIcon sx={{ display: "flex", width: 16, height: 16 }} className="!text-red-500" aria-label="Rejected" />;
         }
     };
 
@@ -81,15 +82,15 @@ const SubmissionsPage: React.FC = () => {
                         <h1 className="text-4xl font-bold text-primary mb-2">My Theme Submissions</h1>
                         <p className="text-muted-foreground">Track and manage all your theme submissions</p>
                     </div>
-                    
+
                     {isAdmin && (
-                        <Alert className="border-yellow-500/20 bg-yellow-500/5">
-                            <AlertTriangleIcon sx={{ width: 20, height: 20 }} className="text-yellow-600 mr-3 inline" />
-                            <div className="inline-block">
+                        <div className="flex items-center gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-4 py-3">
+                            <AlertTriangleIcon sx={{ width: 20, height: 20 }} className="!text-yellow-600 shrink-0" />
+                            <div>
                                 <span className="font-semibold text-yellow-600">Admin Warning:</span>
                                 <span className="text-yellow-600 ml-2">This page displays <b>all</b> theme submissions from all users</span>
                             </div>
-                        </Alert>
+                        </div>
                     )}
                 </div>
 
@@ -113,25 +114,25 @@ const SubmissionsPage: React.FC = () => {
                         {submissions.map((submission, idx) => (
                             <Card key={idx} className="p-0 flex flex-col border-border/40 hover:border-border/80 transition-all duration-200 overflow-hidden h-full">
                                 {submission.fileUrl && (
-                                    <img 
-                                        src={submission.fileUrl} 
-                                        alt={submission.title} 
-                                        className="w-full h-40 object-cover object-center border-b border-border/30" 
+                                    <img
+                                        src={submission.fileUrl}
+                                        alt={submission.title}
+                                        className="w-full h-40 object-cover object-center border-b border-border/30"
                                     />
                                 )}
                                 <div className="p-6 flex flex-col flex-1 space-y-4">
-                                    
+
                                     <div className="flex items-start justify-between gap-3">
                                         <h3 className="font-semibold text-lg text-foreground break-words flex-grow leading-tight">
                                             {submission.title}
                                         </h3>
-                                        <Badge 
+                                        <Badge
                                             variant={
-                                                submission.state === "approved" 
-                                                    ? "default" 
-                                                    : submission.state === "pending" 
-                                                    ? "secondary" 
-                                                    : "destructive"
+                                                submission.state === "approved"
+                                                    ? "default"
+                                                    : submission.state === "pending"
+                                                        ? "secondary"
+                                                        : "destructive"
                                             }
                                             className="flex-shrink-0 whitespace-nowrap"
                                         >
@@ -142,19 +143,19 @@ const SubmissionsPage: React.FC = () => {
                                         </Badge>
                                     </div>
 
-                                    
+
                                     <p className="text-sm text-muted-foreground line-clamp-3">
-                                        <ReactMarkdown 
+                                        <ReactMarkdown
                                             remarkPlugins={[remarkGfm]}
                                             components={{
-                                                p: ({node, ...props}) => <span {...props} />,
+                                                p: ({ node, ...props }) => <span {...props} />,
                                             }}
                                         >
                                             {submission.description}
                                         </ReactMarkdown>
                                     </p>
 
-                                    
+
                                     {submission.reason && (
                                         <div className="flex items-start gap-2 text-sm bg-destructive/5 border border-destructive/20 rounded px-3 py-2">
                                             <AlertTriangleIcon sx={{ width: 16, height: 16 }} className="text-destructive flex-shrink-0 mt-0.5" />
@@ -165,16 +166,16 @@ const SubmissionsPage: React.FC = () => {
                                         </div>
                                     )}
 
-                                    
+
                                     <div className="pt-4 border-t border-border/30 space-y-2">
                                         <p className="text-xs text-muted-foreground">
                                             Submitted {new Date(submission.submittedAt as any as string).toLocaleDateString()} at {new Date(submission.submittedAt as any as string).toLocaleTimeString()}
                                         </p>
                                         {submission.sourceLink && (
-                                            <a 
-                                                href={submission.sourceLink} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer" 
+                                            <a
+                                                href={submission.sourceLink}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
                                                 className="inline-block text-primary hover:underline text-xs font-medium transition-colors"
                                             >
                                                 View Source →

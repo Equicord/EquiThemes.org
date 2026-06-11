@@ -1,6 +1,6 @@
 import { AuthProvider } from "@context/auth";
 import ThemeProvider from "@components/theme-provider";
-import blob from "../../public/favicon.ico";
+const blob = "/favicon.ico";
 import Image from "next/image";
 import "./theme.css";
 import { Toaster } from "@components/ui/toaster";
@@ -92,16 +92,16 @@ function HeaderWithSearchInner() {
     return (
         <div>
             <div className="flex h-16 items-center gap-4">
-                <a href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
+                <a href="/" className="flex shrink-0 items-center space-x-3 hover:opacity-80 transition-opacity">
                     <Image src={blob} alt="Theme Library" width={32} height={32} className="rounded-lg" />
                     <span className="text-xl font-semibold tracking-tight">Theme Library</span>
                 </a>
 
-                <div className={`mx-auto w-full max-w-3xl`}>
+                <div className="flex-1 min-w-0">
                     <SearchBar value={searchQuery} onSearch={setSearchQuery} />
                 </div>
 
-                <div className="ml-auto">
+                <div className="shrink-0">
                     <AccountBar className="flex items-center" />
                 </div>
             </div>

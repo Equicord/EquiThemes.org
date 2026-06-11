@@ -131,7 +131,7 @@ function App({ themes }: { themes: Theme[] }) {
         if (isLoading) return [];
         return themesOnly
             .filter((t) => {
-                const match = t.name.toLowerCase().includes(lowerQuery) || t.description.toLowerCase().includes(lowerQuery);
+                const match = (t.name ?? "").toLowerCase().includes(lowerQuery) || (t.description ?? "").toLowerCase().includes(lowerQuery);
                 return match;
             })
             .sort((a, b) => (b.downloads ?? 0) - (a.downloads ?? 0));
@@ -141,7 +141,7 @@ function App({ themes }: { themes: Theme[] }) {
         if (isLoading) return [];
         return snippetsOnly
             .filter((t) => {
-                const match = t.name.toLowerCase().includes(lowerQuery) || t.description.toLowerCase().includes(lowerQuery);
+                const match = (t.name ?? "").toLowerCase().includes(lowerQuery) || (t.description ?? "").toLowerCase().includes(lowerQuery);
                 return match;
             })
             .sort((a, b) => (b.downloads ?? 0) - (a.downloads ?? 0));
