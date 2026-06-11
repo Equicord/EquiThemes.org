@@ -199,7 +199,7 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
     const escapeHtml = (unsafe: string): string => unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 
     if (url) {
-        const sanitizedUrl = escapeHtml(decodeURIComponent(url as any as string));
+        const sanitizedUrl = escapeHtml(decodeURIComponent(typeof url === "string" ? url : String(url)));
         const linkTag = `<link rel="stylesheet" href="${sanitizedUrl}">`;
         htmlContent = htmlContent.replace("<!--injectSpace-->", linkTag);
     }

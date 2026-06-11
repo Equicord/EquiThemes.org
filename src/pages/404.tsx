@@ -4,10 +4,13 @@ import { useEffect } from "react";
 const ScreamsOfTheDoomed = () => {
     useEffect(() => {
         const favicon = document.getElementById("favicon");
+        if (!favicon) return;
+
         let x = 0;
         let y = 0;
         let dx = 2;
         let dy = 2;
+        let rafId = 0;
         const faviconSize = 100;
         favicon.classList.remove("hidden");
         const moveFavicon = () => {
@@ -28,9 +31,14 @@ const ScreamsOfTheDoomed = () => {
                 dy = -dy;
             }
             favicon.style.transform = `translate(${x}px, ${y}px)`;
-            requestAnimationFrame(moveFavicon);
+            rafId = requestAnimationFrame(moveFavicon);
         };
         moveFavicon();
+
+        return () => {
+            cancelAnimationFrame(rafId);
+            favicon.classList.add("hidden");
+        };
     }, []);
 
     return (

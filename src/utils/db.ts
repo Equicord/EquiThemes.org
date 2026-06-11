@@ -3,6 +3,10 @@ import { MongoClient } from "mongodb";
 const uri = process.env.MONGODB_URI;
 const options = {};
 
+export const THEMES_DB = process.env.MONGODB_THEMES_DB || "themesDatabase";
+export const SUBMISSIONS_DB = process.env.MONGODB_SUBMISSIONS_DB || "submittedThemesDatabase";
+export const USERS_DB = process.env.MONGODB_USERS_DB || "discordUsers";
+
 declare global {
     // eslint-disable-next-line no-unused-vars
     var _mongoClientPromise: Promise<MongoClient>;

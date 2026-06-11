@@ -1,5 +1,5 @@
 import { ErrorHandler } from "@lib/errorHandler";
-import clientPromise from "@utils/db";
+import clientPromise, { THEMES_DB } from "@utils/db";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 async function GET(req: NextApiRequest, res: NextApiResponse) {
@@ -10,7 +10,7 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
     const { id } = req.query;
 
     const client = await clientPromise;
-    const db = client.db("themesDatabase");
+    const db = client.db(THEMES_DB);
     const themesCollection = db.collection("themes");
 
     const theme = await themesCollection.findOne({ id: Number(id) });

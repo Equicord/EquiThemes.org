@@ -1,27 +1,21 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { setCookie } from "@utils/cookies";
 
 export default function AuthCallback() {
     const [redirected, setRedirected] = useState(false);
     const router = useRouter();
-    const { token } = router.query;
 
     useEffect(() => {
-        if (token && typeof token === "string") {
-            setCookie("_dtoken", token, 7);
-        }
-
         const redirectUrl = localStorage.getItem("redirect");
         if (redirectUrl && typeof redirectUrl === "string") {
-            router.push(redirectUrl);
+            router.replace(redirectUrl);
             localStorage.removeItem("redirect");
             setRedirected(true);
         } else {
-            if (!redirected) router.push("/");
+            if (!redirected) router.replace("/");
             setRedirected(true);
         }
-    }, [redirected, token, router]);
+    }, [redirected, router]);
 
     return (
         <div className="flex flex-col justify-center items-center min-h-screen px-4">
@@ -37,6 +31,5 @@ export default function AuthCallback() {
 }
 
 export async function getServerSideProps() {
-    // Ensure this page is always server-side rendered
     return { props: {} };
 }

@@ -1,9 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { APIConnection as Connection, APIUser as User } from "discord-api-types/v10";
-import clientPromise from "@utils/db";
+import clientPromise, { THEMES_DB } from "@utils/db";
 import { createHash, randomBytes } from "crypto";
 import { SERVER } from "@constants";
 import { ErrorHandler } from "@lib/errorHandler";
+import { setSessionCookie } from "@utils/sessionCookie";
 
 const WEBHOOK_LOGS_URL = process.env.WEBHOOK_LOGS;
 
@@ -91,7 +92,7 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
             "Content-Type": "application/x-www-form-urlencoded"
         },
         body: new URLSearchParams({
-            client_id: process.env.AUTH_DISCORD_ID,
+            client_id: process.env.NEXT_PUBLIC_AUTH_DISCORD_ID,
             client_secret: process.env.AUTH_DISCORD_SECRET,
             code: code as string,
             grant_type: "authorization_code",
@@ -117,7 +118,7 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
     const githubAccount = await fetchGitHubAccount(`${oauthResponse.token_type} ${oauthResponse.access_token}`);
 
     const client = await clientPromise;
-    const db = client.db("themesDatabase");
+    const db = client.db(THEMES_DB);
     const users = db.collection("users");
 
     const generateKey = () => {
@@ -256,13 +257,19 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
         }
     }
 
-    res.setHeader("Content-Type", "application/json");
-
     if (!authKey) {
+        res.setHeader("Content-Type", "application/json");
         res.status(500).json({ status: 500, message: "Failed to generate a user token, if you think that this is a bug feel free to open an issue at https://github.com/Equicord/EquiThemes.org", error: "MISSING OAUTH2 TOKEN" });
+        return;
+    }
+
+    setSessionCookie(res, authKey);
+
+    if (callback) {
+        res.redirect(callback as string);
     } else {
-        if (callback) res.redirect((callback as string) + `?token=${authKey}`);
-        else res.status(200).json({ status: 200, token: authKey, user: { id: user.id, avatar: user.avatar, preferredColor: user.banner_color, githubAccount } });
+        res.setHeader("Content-Type", "application/json");
+        res.status(200).json({ status: 200, token: authKey, user: { id: user.id, avatar: user.avatar, preferredColor: user.banner_color, githubAccount } });
     }
 }
 

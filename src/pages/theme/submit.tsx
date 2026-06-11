@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useRouter } from "next/router";
-import { type FocusEvent, useEffect, useRef, useState } from "react";
+import { type Dispatch, type FocusEvent, type SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import { Progress } from "@components/ui/progress";
 import { Card } from "@components/ui/card";
 import { Input } from "@components/ui/input";
@@ -12,40 +12,200 @@ import MarkdownInput from "@components/ui/markdown-input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
 import { useWebContext } from "@context/auth";
 import { Alert, AlertDescription } from "@components/ui/alert";
-import { deleteCookie, getCookie } from "@utils/cookies";
+import { getCookie } from "@utils/cookies";
 import { toast } from "@hooks/use-toast";
 import Head from "next/head";
+import type { SubmitFormData, ValidatedUser } from "@types";
 
-interface ValidatedUser {
-    id: string;
-    username: string;
-    avatar: string;
+const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+const isValidSourceUrl = (url: string) => {
+    if (!url) return false;
+    try {
+        const parsed = new URL(url);
+        return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+        return false;
+    }
+};
+
+const validateDiscordUsers = async (userIds: string[]) => {
+    try {
+        const response = await fetch("/api/user/isValid", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${getCookie("_dtoken")}`
+            },
+            body: JSON.stringify({ users: userIds })
+        });
+
+        if (!response.ok) return [];
+
+        const data = await response.json();
+        return data.users as ValidatedUser[];
+    } catch (error) {
+        console.error("Failed to validate users:", error);
+        return [];
+    }
+};
+
+interface ContributorInputsProps {
+    formData: SubmitFormData;
+    setFormData: Dispatch<SetStateAction<SubmitFormData>>;
+    submitting: boolean;
+    shakeError: boolean;
+    isValidating: boolean;
+    setIsValidating: Dispatch<SetStateAction<boolean>>;
 }
+
+const ContributorInputs = ({ formData, setFormData, submitting, shakeError, isValidating, setIsValidating }: ContributorInputsProps) => {
+    const [validationError, setValidationError] = useState("");
+    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+    const [bulkInput, setBulkInput] = useState("");
+
+    const validateAndAddUser = async (userId: string) => {
+        if (!userId.trim()) return;
+        setIsValidating(true);
+        setValidationError("");
+
+        const validUsers = await validateDiscordUsers([userId]);
+        if (validUsers.length > 0) {
+            const validUser = validUsers[0];
+            setFormData((prev) => ({
+                ...prev,
+                validatedUsers: {
+                    ...prev.validatedUsers,
+                    [userId]: validUser
+                }
+            }));
+        } else {
+            setValidationError(`Invalid Discord ID: ${userId}`);
+        }
+        setIsValidating(false);
+    };
+
+    const handleBulkInput = async (e: FocusEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        if (!value) return;
+
+        const newIds = value.split(/[\s,]+/).filter((id) => id.trim());
+        setBulkInput("");
+
+        setIsValidating(true);
+        setValidationError("");
+        const validUsers = await validateDiscordUsers(newIds);
+
+        if (validUsers.length > 0) {
+            const newValidatedUsers = validUsers.reduce(
+                (acc, user) => {
+                    acc[user.id] = user;
+                    return acc;
+                },
+                {} as Record<string, ValidatedUser>
+            );
+
+            setFormData((prev) => ({
+                ...prev,
+                contributors: [...new Set([...prev.contributors, ...validUsers.map((u) => u.id)])],
+                validatedUsers: { ...prev.validatedUsers, ...newValidatedUsers }
+            }));
+        }
+
+        const validIds = new Set(validUsers.map((u) => u.id));
+        const rejectedIds = newIds.filter((id) => !validIds.has(id));
+        if (rejectedIds.length > 0) {
+            setValidationError(`Invalid Discord ID${rejectedIds.length > 1 ? "s" : ""}: ${rejectedIds.join(", ")}`);
+        }
+        setIsValidating(false);
+    };
+
+    return (
+        <div className="space-y-2 mt-2">
+            {formData.contributors.map((contributorId, index) =>
+                !contributorId ? null : (
+                    <div key={`contributor-${index}`} className="flex items-center gap-2">
+                        <div className="flex-1 select-none flex items-center gap-2 p-2 border border-muted rounded">
+                            {formData.validatedUsers[contributorId] ? (
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <img src={`https://cdn.discordapp.com/avatars/${contributorId}/${formData.validatedUsers[contributorId].avatar}.png`} className="w-8 h-8 rounded-full flex-shrink-0" draggable={false} alt={formData.validatedUsers[contributorId].username} />
+                                    <span className="truncate">{formData.validatedUsers[contributorId].username}</span>
+                                    <span className="text-muted-foreground text-sm truncate flex-shrink-0">({contributorId})</span>
+                                </div>
+                            ) : (
+                                <Input
+                                    value={contributorId}
+                                    disabled={submitting}
+                                    onChange={(e) => {
+                                        const newContributors = [...formData.contributors];
+                                        newContributors[index] = e.target.value;
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            contributors: newContributors
+                                        }));
+                                    }}
+                                    onBlur={(e) => validateAndAddUser(e.target.value)}
+                                    placeholder="Discord User ID"
+                                    ref={(el) => { inputRefs.current[index] = el; }}
+                                />
+                            )}
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={submitting}
+                            onClick={() => {
+                                setFormData((prev) => ({
+                                    ...prev,
+                                    contributors: prev.contributors.filter((_, i) => i !== index)
+                                }));
+                            }}
+                        >
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )
+            )}
+
+            <div className="flex flex-col gap-2">
+                <Input value={bulkInput} onChange={(e) => setBulkInput(e.target.value)} onBlur={handleBulkInput} placeholder="Type multiple IDs separated by spaces..." className="italic" disabled={isValidating || submitting} />
+                {isValidating && <p className="text-sm text-muted-foreground">Validating users...</p>}
+                {validationError && (
+                    <Alert className={`mt-2 border-red-600/20 bg-red-500/10 ${shakeError ? "shake" : ""}`}>
+                        <AlertDescription className="text-sm">{validationError}</AlertDescription>
+                    </Alert>
+                )}
+            </div>
+        </div>
+    );
+};
 
 export default function SubmitPage() {
     const router = useRouter();
     const [step, setStep] = useState(1);
     const [dragActive, setDragActive] = useState(false);
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<SubmitFormData>({
         title: "",
         file: null,
         fileUrl: "",
         description: "",
         contributors: [""],
         sourceLink: "",
-        validatedUsers: {} as Record<string, ValidatedUser>
+        validatedUsers: {}
     });
     const [showPreviewModal, setShowPreviewModal] = useState(false);
     const [previewUrl, setPreviewUrl] = useState("");
     const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-    const [validSource, setValidSource] = useState(false);
     const [urlError, setUrlError] = useState(false);
+    const [isValidatingContributors, setIsValidatingContributors] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [shakeError, setShakeError] = useState(false);
     const [isBanned, setIsBanned] = useState(false);
-    const [notifications, setNotifications] = useState<any[]>([]);
     const { authorizedUser, isAuthenticated, isLoading } = useWebContext();
+
+    const validSource = useMemo(() => isValidSourceUrl(formData.sourceLink), [formData.sourceLink]);
 
     const isValidImageUrl = (url: string) => {
         if (!url) return false;
@@ -54,35 +214,15 @@ export default function SubmitPage() {
     };
 
     useEffect(() => {
-        const token = getCookie("_dtoken");
-
-        if (isAuthenticated === false && token) {
-            deleteCookie("_dtoken");
+        if (isAuthenticated === false) {
+            fetch("/api/user/logout", { method: "POST" });
             router.push("/");
             return;
         }
 
-        // Check if user is banned and fetch notifications
+        // Check if user is banned
         if (isAuthenticated && authorizedUser) {
             setIsBanned(authorizedUser.bannedFromSubmissions || false);
-
-            const fetchNotifications = async () => {
-                try {
-                    const response = await fetch("/api/user/notifications", {
-                        headers: {
-                            Authorization: `Bearer ${getCookie("_dtoken")}`
-                        }
-                    });
-                    if (response.ok) {
-                        const data = await response.json();
-                        setNotifications(data);
-                    }
-                } catch (error) {
-                    console.error("Failed to fetch notifications:", error);
-                }
-            };
-
-            fetchNotifications();
         }
     }, [router, isAuthenticated, authorizedUser]);
 
@@ -116,18 +256,14 @@ export default function SubmitPage() {
         if (step === 4) {
             if (!data.sourceLink.trim()) {
                 newErrors.sourceLink = "Source link is required.";
+            } else if (!isValidSourceUrl(data.sourceLink.trim())) {
+                newErrors.sourceLink = "Source link must be a valid http(s) URL.";
             }
         }
         return newErrors;
     }
 
     const nextStep = () => {
-        if (errors.file) {
-            setShakeError(true);
-            setTimeout(() => setShakeError(false), 500);
-            return;
-        }
-
         const stepErrors = validateStep(step, formData);
         if (Object.keys(stepErrors).length > 0) {
             setErrors(stepErrors);
@@ -136,6 +272,7 @@ export default function SubmitPage() {
             return;
         }
 
+        setErrors({});
         if (step === totalSteps) return handleSubmit(formData);
         setStep(step + 1);
     };
@@ -161,54 +298,101 @@ export default function SubmitPage() {
         }
     };
 
-    const handleFileChange = (file) => {
+    const handleFileChange = (file: File | undefined | null) => {
+        if (!file) return;
+
+        if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+            toast({
+                title: "Invalid file type",
+                description: "Please upload a PNG, JPG, GIF or WEBP image.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        if (file.size > MAX_FILE_SIZE) {
+            toast({
+                title: "File too large",
+                description: "Preview images must be 10MB or smaller.",
+                variant: "destructive"
+            });
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = (e) => {
-            setFormData((prev) => ({ ...prev, file: e.target.result }));
+            setFormData((prev) => ({ ...prev, file: e.target?.result as string }));
+            clearFileError();
         };
         reader.readAsDataURL(file);
     };
 
-    const handleSubmit = async (form) => {
-        setSubmitting(true);
+    const clearFileError = () => {
+        setErrors((prev) => {
+            if (!prev.file) return prev;
+            const next = { ...prev };
+            delete next.file;
+            return next;
+        });
+    };
+
+    const handleSubmit = async (form: SubmitFormData) => {
         const finalErrors = validateStep(step, form);
         if (Object.keys(finalErrors).length > 0) {
             setErrors(finalErrors);
+            setShakeError(true);
+            setTimeout(() => setShakeError(false), 500);
             return;
         }
 
-        form.contributors = [authorizedUser.id, ...new Set(form.contributors)];
+        setErrors({});
+        setSubmitting(true);
 
-        form.validatedUsers = {
-            ...form.validatedUsers,
-            [authorizedUser.id]: {
-                id: authorizedUser.id,
-                username: authorizedUser.global_name,
-                avatar: authorizedUser.avatar,
-                github_name: authorizedUser.githubAccount
+        const payload = {
+            ...form,
+            contributors: [...new Set([authorizedUser.id, ...form.contributors.filter((id) => id && form.validatedUsers[id])])],
+            validatedUsers: {
+                ...form.validatedUsers,
+                [authorizedUser.id]: {
+                    id: authorizedUser.id,
+                    username: authorizedUser.global_name,
+                    avatar: authorizedUser.avatar,
+                    github_name: authorizedUser.githubAccount
+                }
             }
         };
 
-        const response = await fetch("/api/submit/theme", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${getCookie("_dtoken")}`
-            },
-            body: JSON.stringify(form)
-        });
+        try {
+            const response = await fetch("/api/submit/theme", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${getCookie("_dtoken")}`
+                },
+                body: JSON.stringify(payload)
+            });
 
-        if (response.ok) {
-            const data = await response.json();
-            router.push(`/theme/submitted/${data.id}`);
-        } else {
-            setSubmitting(false);
-            const data = await response.json();
+            if (response.ok) {
+                const data = await response.json();
+                router.push(`/theme/submitted/${data.id}`);
+                return;
+            }
+
+            const data = await response.json().catch(() => ({}));
             toast({
                 title: "Failed to submit",
                 description: data.message || "An error occurred while submitting your theme. Please try again later.",
                 variant: "destructive"
             });
+        } catch (error) {
+            console.error("Failed to submit theme:", error);
+            toast({
+                title: "Failed to submit",
+                description: "A network error occurred while submitting your theme. Please try again.",
+                variant: "destructive"
+            });
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -216,12 +400,23 @@ export default function SubmitPage() {
         setIsLoadingPreview(true);
         try {
             const response = await fetch(`/api/preview/screenshot?url=${encodeURIComponent(url)}`);
-            const buffer = await response.arrayBuffer();
-            const base64Image = btoa(new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), ""));
+            if (!response.ok) {
+                throw new Error(`Preview generation failed with status ${response.status}`);
+            }
+
+            const blob = await response.blob();
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsDataURL(blob);
+            });
+
             setFormData((prev) => ({
                 ...prev,
-                file: `data:image/png;base64,${base64Image}`
+                file: dataUrl
             }));
+            clearFileError();
             setShowPreviewModal(false);
         } catch (error) {
             console.error("Failed to fetch preview:", error);
@@ -229,146 +424,6 @@ export default function SubmitPage() {
         } finally {
             setIsLoadingPreview(false);
         }
-    };
-
-    const isValidSourceUrl = (url: string) => {
-        if (!url) return true;
-    };
-
-    const validateDiscordUsers = async (userIds: string[]) => {
-        try {
-            const response = await fetch("/api/user/isValid", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${getCookie("_dtoken")}`
-                },
-                body: JSON.stringify({ users: userIds })
-            });
-
-            if (!response.ok) return [];
-
-            const data = await response.json();
-            return data.users as ValidatedUser[];
-        } catch (error) {
-            console.error("Failed to validate users:", error);
-            return [];
-        }
-    };
-
-    const ContributorInputs = () => {
-        const [isValidating, setIsValidating] = useState(false);
-        const [validationError, setValidationError] = useState("");
-        const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-        const [bulkInput, setBulkInput] = useState("");
-
-        const validateAndAddUser = async (userId: string) => {
-            if (!userId.trim()) return;
-            setIsValidating(true);
-            setValidationError("");
-
-            const validUsers = await validateDiscordUsers([userId]);
-            if (validUsers.length > 0) {
-                const validUser = validUsers[0];
-                setFormData((prev) => ({
-                    ...prev,
-                    validatedUsers: {
-                        ...prev.validatedUsers,
-                        [userId]: validUser
-                    }
-                }));
-            } else {
-                setValidationError(`Invalid Discord ID: ${userId}`);
-            }
-            setIsValidating(false);
-        };
-
-        const handleBulkInput = async (e: FocusEvent<HTMLInputElement>) => {
-            const value = e.target.value;
-            if (!value) return;
-
-            const newIds = value.split(/[\s,]+/).filter((id) => id.trim());
-            setBulkInput("");
-
-            setIsValidating(true);
-            const validUsers = await validateDiscordUsers(newIds);
-
-            if (validUsers.length > 0) {
-                const newValidatedUsers = validUsers.reduce(
-                    (acc, user) => {
-                        acc[user.id] = user;
-                        return acc;
-                    },
-                    {} as Record<string, ValidatedUser>
-                );
-
-                setFormData((prev) => ({
-                    ...prev,
-                    contributors: [...new Set([...prev.contributors, ...validUsers.map((u) => u.id)])],
-                    validatedUsers: { ...prev.validatedUsers, ...newValidatedUsers }
-                }));
-            }
-            setIsValidating(false);
-        };
-
-        return (
-            <div className="space-y-2 mt-2">
-                {formData.contributors
-                    .filter((id) => id)
-                    .map((contributorId, index) => (
-                        <div key={`contributor-${index}`} className="flex items-center gap-2">
-                            <div className="flex-1 select-none flex items-center gap-2 p-2 border border-muted rounded">
-                                {formData.validatedUsers[contributorId] ? (
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <img src={`https://cdn.discordapp.com/avatars/${contributorId}/${formData.validatedUsers[contributorId].avatar}.png`} className="w-8 h-8 rounded-full flex-shrink-0" draggable={false} alt={formData.validatedUsers[contributorId].username} />
-                                        <span className="truncate">{formData.validatedUsers[contributorId].username}</span>
-                                        <span className="text-muted-foreground text-sm truncate flex-shrink-0">({contributorId})</span>
-                                    </div>
-                                ) : (
-                                    <Input
-                                        value={contributorId}
-                                        disabled={submitting}
-                                        onChange={(e) => {
-                                            const newContributors = [...formData.contributors];
-                                            newContributors[index] = e.target.value;
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                contributors: newContributors
-                                            }));
-                                        }}
-                                        onBlur={(e) => validateAndAddUser(e.target.value)}
-                                        placeholder="Discord User ID"
-                                        ref={(el) => { inputRefs.current[index] = el; }}
-                                    />
-                                )}
-                            </div>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={submitting}
-                                onClick={() => {
-                                    setFormData((prev) => ({
-                                        ...prev,
-                                        contributors: prev.contributors.filter((_, i) => i !== index)
-                                    }));
-                                }}
-                            >
-                                <X className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    ))}
-
-                <div className="flex flex-col gap-2">
-                    <Input value={bulkInput} onChange={(e) => setBulkInput(e.target.value)} onBlur={handleBulkInput} placeholder="Type multiple IDs separated by spaces..." className="italic" disabled={isValidating || submitting} />
-                    {isValidating && <p className="text-sm text-muted-foreground">Validating users...</p>}
-                    {validationError && (
-                        <Alert className={`mt-2 border-red-600/20 bg-red-500/10 ${shakeError ? "shake" : ""}`}>
-                            <AlertDescription className="text-sm">{validationError}</AlertDescription>
-                        </Alert>
-                    )}
-                </div>
-            </div>
-        );
     };
 
     return (
@@ -502,11 +557,11 @@ export default function SubmitPage() {
                                                             <div className="space-y-3">
                                                                 <p className="text-sm font-medium text-foreground">Upload Image</p>
                                                                 <div className={`border-2 ${dragActive ? "border-primary bg-primary/5" : "border-input"} transition-all duration-200 border-dashed rounded-lg p-8 text-center bg-muted/30`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
-                                                                    <Input type="file" accept="image/png, image/gif, image/webp" onChange={(e) => handleFileChange(e.target.files[0])} className="hidden" id="file-upload" />
+                                                                    <Input type="file" accept="image/png, image/jpeg, image/gif, image/webp" onChange={(e) => handleFileChange(e.target.files?.[0])} className="hidden" id="file-upload" />
                                                                     <Label htmlFor="file-upload" className="flex flex-col select-none items-center justify-center cursor-pointer">
                                                                         <Upload className="w-10 h-10 text-muted-foreground mb-3" />
                                                                         <p className="text-base font-medium mb-1">Drag and drop or click to select</p>
-                                                                        <p className="text-sm text-muted-foreground">PNG, GIF, WEBP (Recommended: 854x480px)</p>
+                                                                        <p className="text-sm text-muted-foreground">PNG, JPG, GIF, WEBP (Recommended: 854x480px, max 10MB)</p>
                                                                     </Label>
                                                                 </div>
                                                             </div>
@@ -530,6 +585,7 @@ export default function SubmitPage() {
                                                                             if (isValidImageUrl(formData.fileUrl)) {
                                                                                 setUrlError(false);
                                                                                 updateFormData("file", formData.fileUrl);
+                                                                                clearFileError();
                                                                             } else {
                                                                                 setUrlError(true);
                                                                             }
@@ -594,7 +650,7 @@ export default function SubmitPage() {
                                                                 <p className="text-muted-foreground">Add Discord User IDs of anyone else who contributed to your theme.</p>
                                                             </div>
                                                             <div className="space-y-4">
-                                                                <ContributorInputs />
+                                                                <ContributorInputs formData={formData} setFormData={setFormData} submitting={submitting} shakeError={shakeError} isValidating={isValidatingContributors} setIsValidating={setIsValidatingContributors} />
                                                             </div>
                                                         </Card>
 
@@ -616,14 +672,10 @@ export default function SubmitPage() {
                                                                     </Label>
                                                                     <Input
                                                                         id="source"
-                                                                        className={`h-10 ${!formData.sourceLink ? "border-red-500" : ""}`}
+                                                                        className={`h-10 ${formData.sourceLink && !validSource ? "border-red-500" : ""}`}
                                                                         value={formData.sourceLink}
                                                                         disabled={submitting}
-                                                                        onChange={(e) => {
-                                                                            const value = e.target.value;
-                                                                            setValidSource(isValidSourceUrl(value));
-                                                                            updateFormData("sourceLink", value);
-                                                                        }}
+                                                                        onChange={(e) => updateFormData("sourceLink", e.target.value)}
                                                                         placeholder="https://raw.githubusercontent.com/username/repo/main/theme.css"
                                                                     />
                                                                     <p className="text-xs text-muted-foreground">Supported: GitHub, GitLab & custom instances</p>
@@ -643,7 +695,7 @@ export default function SubmitPage() {
                                                 <Button variant="outline" onClick={prevStep} disabled={step === 1 || submitting} className="h-11 px-6">
                                                     Previous Step
                                                 </Button>
-                                                <Button disabled={submitting} onClick={nextStep} className="h-11 px-8 min-w-[140px]">
+                                                <Button disabled={submitting || isValidatingContributors} onClick={nextStep} className="h-11 px-8 min-w-[140px]">
                                                     {step === totalSteps ? (
                                                         submitting ? (
                                                             <>

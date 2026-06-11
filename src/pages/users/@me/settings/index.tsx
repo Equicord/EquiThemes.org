@@ -4,16 +4,16 @@ import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@components/ui/alert-dialog";
 import {
-    ContentCopy as CopyIcon,
-    Visibility as EyeIcon,
-    GitHub as GithubIcon,
-    Tag as HashIcon,
-    Refresh as RefreshIcon,
+    Copy as CopyIcon,
+    Eye as EyeIcon,
+    Github as GithubIcon,
+    Hash as HashIcon,
+    RefreshCw as RefreshIcon,
     Settings as SettingsIcon,
-    Person as UserIcon,
-    AccountCircle as UserCircleIcon
-} from "@mui/icons-material";
-import { deleteCookie, getCookie, setCookie } from "@utils/cookies";
+    User as UserIcon,
+    CircleUserRound as UserCircleIcon
+} from "lucide-react";
+import { getCookie } from "@utils/cookies";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useToast } from "@hooks/use-toast";
 import { Skeleton } from "@components/ui/skeleton";
@@ -80,7 +80,7 @@ function AccountLinks() {
         }
     });
 
-    const isChanged = donationLink !== prevLinks.current.donationLink || websiteLink !== prevLinks.current.websiteLink;
+    const isChanged = donationLink !== (prevLinks.current.donationLink || "") || websiteLink !== (prevLinks.current.websiteLink || "");
 
     return (
         <div className="space-y-6 mb-4 p-6 rounded-xl border border-muted/30 bg-muted/30 shadow-sm">
@@ -156,12 +156,12 @@ export default function SettingsPage() {
                                 </h2>
                                 <div className="rounded-lg border border-yellow-600/30 bg-yellow-500/10 px-4 py-3 text-sm">
                                     <div className="flex items-center gap-2 font-semibold text-yellow-600 mb-1">
-                                        <EyeIcon sx={{ display: "flex", width: 16, height: 16 }} className="!text-yellow-600" />
+                                        <EyeIcon className="flex w-4 h-4 !text-yellow-600" />
                                         Access to your Account Token
                                     </div>
                                     <div className="text-yellow-700/90 text-sm">
-                                        <p className="text-sm text-muted-foreground">
-                                            Your API key is a secure token that identifies your account. It grants access to:
+                                        <div className="text-sm text-muted-foreground">
+                                            <p>Your API key is a secure token that identifies your account. It grants access to:</p>
                                             <ul className="list-disc list-inside mt-2 space-y-1">
                                                 <li>Managing your themes</li>
                                                 <li>Accessing account settings</li>
@@ -170,7 +170,7 @@ export default function SettingsPage() {
                                             <span className="block mt-2">
                                                 This is <b>not</b> your Discord Account token, however, still, do not share it with anyone who you don't trust.
                                             </span>
-                                        </p>
+                                        </div>
                                     </div>
                                 </div>
                                 <APIKey />
@@ -229,8 +229,14 @@ function DeleteAccount() {
                 title: "Account Deleted",
                 description: "Your account & themes have been permanently deleted."
             });
-            deleteCookie("_dtoken");
+            await fetch("/api/user/logout", { method: "POST" });
             window.location.href = "/";
+        } catch {
+            toast({
+                title: "Error",
+                description: "Failed to delete your account & themes.",
+                variant: "destructive"
+            });
         } finally {
             setDeleting(false);
         }
@@ -257,12 +263,18 @@ function DeleteAccount() {
                 });
                 return;
             }
-            await deleteCookie("_dtoken");
+            await fetch("/api/user/logout", { method: "POST" });
             toast({
                 title: "Success",
                 description: "You have been logged out & your account data has been deleted."
             });
             window.location.href = "/";
+        } catch {
+            toast({
+                title: "Failed to Logout",
+                description: "Something went wrong while revoking your authorization.",
+                variant: "destructive"
+            });
         } finally {
             setRevoking(false);
         }
@@ -275,12 +287,12 @@ function DeleteAccount() {
             </h2>
             <div className="rounded-lg border border-red-600/30 bg-red-500/10 px-4 py-3 text-sm">
                 <div className="flex items-center gap-2 font-semibold text-red-600 mb-1">
-                    <RefreshIcon sx={{ display: "flex", width: 16, height: 16 }} className="!text-red-600" />
+                    <RefreshIcon className="flex w-4 h-4 !text-red-600" />
                     Deleting your Account
                 </div>
                 <div className="text-red-700/90 text-sm">
-                    <p className="text-sm text-muted-foreground">
-                        This will delete your account including:
+                    <div className="text-sm text-muted-foreground">
+                        <p>This will delete your account including:</p>
                         <ul className="list-disc list-inside mt-2 space-y-1">
                             <li>All your submitted themes</li>
                             <li>All liked themes</li>
@@ -291,7 +303,7 @@ function DeleteAccount() {
                             <br />
                             <b>This action cannot be undone.</b>
                         </div>
-                    </p>
+                    </div>
                 </div>
             </div>
             {authorizedUser?.admin && (
@@ -313,11 +325,11 @@ function DeleteAccount() {
                             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                             <AlertDialogDescription>
                                 This action cannot be undone. This will permanently delete your account and remove your data from our servers.
-                                <div className="mt-2 mb-2">
-                                    This will, <span className="text-red-500">delete all your submitted themes, liked themes, and other data associated with your account</span>. <b>EVERYTHING.</b>
-                                </div>
-                                <div className="mt-2 mb-2 text-xs text-muted-foreground">This does not affect your Discord Account in any way.</div>
                             </AlertDialogDescription>
+                            <div className="mt-2 mb-2 text-sm text-muted-foreground">
+                                This will, <span className="text-red-500">delete all your submitted themes, liked themes, and other data associated with your account</span>. <b>EVERYTHING.</b>
+                            </div>
+                            <div className="mt-2 mb-2 text-xs text-muted-foreground">This does not affect your Discord Account in any way.</div>
                         </AlertDialogHeader>
                         <div className="space-y-2">
                             <Alert className="border-red-600/30 bg-red-500/10 shadow-none">
@@ -349,12 +361,12 @@ function DeleteAccount() {
                             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                             <AlertDialogDescription>
                                 This will:
-                                <ul className="list-disc list-inside mt-2 space-y-1">
-                                    <li>Invalidate your current API Key</li>
-                                    <li>Log you out</li>
-                                    <li>Delete your account data</li>
-                                </ul>
                             </AlertDialogDescription>
+                            <ul className="list-disc list-inside mt-2 space-y-1 text-sm text-muted-foreground">
+                                <li>Invalidate your current API Key</li>
+                                <li>Log you out</li>
+                                <li>Delete your account data</li>
+                            </ul>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -481,12 +493,22 @@ function APIKey() {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [cooldown, setCooldown] = useState(false);
     const { toast } = useToast();
-    const { authorizedUser } = useWebContext();
+    const { authorizedUser, isAuthenticated } = useWebContext();
+    const cooldownTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
+        if (!isAuthenticated) return;
         const token = getCookie("_dtoken");
         if (!token) return;
         setApiKey(token);
+    }, [isAuthenticated]);
+
+    useEffect(() => {
+        return () => {
+            if (cooldownTimeout.current) {
+                clearTimeout(cooldownTimeout.current);
+            }
+        };
     }, []);
 
     const handleCopy = useCallback(async () => {
@@ -525,7 +547,6 @@ function APIKey() {
             const data = await response.json();
 
             if (response.ok) {
-                setCookie("_dtoken", data.token);
                 setApiKey(data.token);
                 toast({
                     title: "Success",
@@ -546,7 +567,7 @@ function APIKey() {
             });
         } finally {
             setIsRefreshing(false);
-            setTimeout(() => setCooldown(false), 5000);
+            cooldownTimeout.current = setTimeout(() => setCooldown(false), 5000);
         }
     };
 

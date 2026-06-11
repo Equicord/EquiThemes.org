@@ -5,6 +5,13 @@ interface ParsedSourceUrl {
     path: string;
 }
 
+/** Subset of the GitHub "get repository content" API response that we use. */
+interface GitHubContentsResponse {
+    content?: string;
+}
+
+import { safeFetch } from "@utils/safeFetch";
+
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
 function isBinaryContent(content: string): boolean {
@@ -77,15 +84,15 @@ function parseUrl(url: string): ParsedSourceUrl | null {
 
 async function fetchRawContent(url: string): Promise<string> {
     try {
-        const response = await fetch(url, {
+        const response = await safeFetch(url, {
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
             }
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         return response.text();
-    } catch (error: any) {
-        throw new Error(`Failed to fetch from URL: ${error.message}`);
+    } catch (error) {
+        throw new Error(`Failed to fetch from URL: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
 
@@ -104,11 +111,11 @@ async function fetchApiContent(parsed: ParsedSourceUrl): Promise<string> {
         const response = await fetch(url, { headers });
         if (!response.ok) throw new Error(`Failed to fetch from GitHub API: ${response.statusText}`);
 
-        const data: any = await response.json();
+        const data = (await response.json()) as GitHubContentsResponse;
         if (!data.content) throw new Error("No content found in GitHub API response");
 
         return Buffer.from(data.content, "base64").toString("utf-8");
-    } catch (error: any) {
-        throw new Error(`GitHub API fetch failed: ${error.message}`);
+    } catch (error) {
+        throw new Error(`GitHub API fetch failed: ${error instanceof Error ? error.message : String(error)}`);
     }
 }

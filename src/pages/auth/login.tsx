@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Head from "next/head";
 import { SERVER } from "@constants";
 
-const redirect = `https://discord.com/oauth2/authorize?client_id=1464006702125940736&response_type=code&redirect_uri=${SERVER}/api/user/auth?callback={CALLBACK}&scope=connections%20identify`;
+const redirect = `https://discord.com/oauth2/authorize?client_id=${process.env.NEXT_PUBLIC_AUTH_DISCORD_ID}&response_type=code&redirect_uri=${SERVER}/api/user/auth?callback={CALLBACK}&scope=connections%20identify`;
 
 export default function AuthCallback() {
     const router = useRouter();
@@ -11,10 +11,7 @@ export default function AuthCallback() {
     useEffect(() => {
         if (typeof window !== "undefined") {
             const callback = (router.query?.callback as string) ?? "/auth/callback";
-            console.log("Callback value:", callback); // Debug log
-
-            const finalRedirect = redirect.replace("{CALLBACK}", callback);
-            console.log("Final redirect value:", finalRedirect); // Debug log
+            const finalRedirect = redirect.replace("{CALLBACK}", encodeURIComponent(callback));
 
             router.replace(finalRedirect);
         }

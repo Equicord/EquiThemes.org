@@ -1,6 +1,6 @@
 import PQueue from "p-queue";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { isAuthed } from "@utils/auth";
+import { getToken, isAuthed } from "@utils/auth";
 import { ErrorHandler } from "@lib/errorHandler";
 
 const queue = new PQueue({
@@ -40,16 +40,11 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
         }
 
         const { users } = req.body;
-        const { authorization } = req.headers;
 
-        if (!authorization) {
-            return res.status(400).json({ message: "Cannot check authorization without unique token" });
-        }
-
-        const token = authorization?.replace("Bearer ", "")?.trim() ?? null;
+        const token = getToken(req);
 
         if (!token) {
-            return res.status(400).json({ message: "Invalid Request, unique user token is missing" });
+            return res.status(401).json({ status: 401, message: "Given token is not authorized" });
         }
         const user = await isAuthed(token as string);
 

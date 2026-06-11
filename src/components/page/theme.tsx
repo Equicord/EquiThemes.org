@@ -12,37 +12,13 @@ import HeroHighlights from "@components/page/hero-highlights";
 
 import { useSearch } from "@context/search";
 import { Alert, AlertDescription, AlertTitle } from "@components/ui/alert";
-import { type Theme } from "@types";
+import { type LikesData, type Theme } from "@types";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@components/ui/tabs";
 import { DiscordIcon } from "@utils/icons";
 
 
-const Skeleton = ({ className = "", ...props }) => <div className={`animate-pulse bg-muted/30 rounded ${className}`} {...props} />;
-
-const SkeletonGrid = ({ amount = 6 }) => {
-    const [isMobile, setIsMobile] = useState(false);
-
-    useEffect(() => {
-        const checkMobile = () => {
-            setIsMobile(window.innerWidth < 768);
-        };
-
-        checkMobile();
-        window.addEventListener("resize", checkMobile);
-
-        return () => window.removeEventListener("resize", checkMobile);
-    }, []);
-
-    const displayAmount = isMobile ? Math.min(2, amount) : amount;
-
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(displayAmount)].map((_, i) => (
-                <Skeleton key={i} className="w-full h-[280px] rounded-lg" />
-            ))}
-        </div>
-    );
-};
+const MemoizedThemeCarousel = React.memo(ThemeCarousel);
+const MemoizedHeroHighlights = React.memo(HeroHighlights);
 
 const NoResults = () => (
     <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -57,7 +33,7 @@ const NoResults = () => (
 function App({ themes }: { themes: Theme[] }) {
     const { searchQuery } = useSearch();
     const [isValid, setUser] = useState<UserData | boolean>(false);
-    const [likedThemes, setLikedThemes] = useState([]);
+    const [likedThemes, setLikedThemes] = useState<LikesData | null>(null);
     const { authorizedUser, isAuthenticated, isLoading, error } = useWebContext();
     const [showScrollTop, setShowScrollTop] = useState(false);
     const deferredQuery = React.useDeferredValue(searchQuery);
@@ -82,29 +58,46 @@ function App({ themes }: { themes: Theme[] }) {
         const token = getCookie("_dtoken");
 
         async function getLikedThemes() {
-            const cachedLikedThemes = localStorage.getItem("likedThemes");
-            const cacheTime = localStorage.getItem("ct");
+            // Scope the cache to the logged-in user so switching accounts
+            // doesn't surface the previous user's likes.
+            const userId = authorizedUser?.id;
+            const cacheKey = userId ? `likedThemes:${userId}` : null;
+            const cacheTimeKey = userId ? `ct:${userId}` : null;
             const now = Date.now();
 
-            if (cachedLikedThemes && cacheTime && now - parseInt(cacheTime, 10) < 3600000) {
-                setLikedThemes(JSON.parse(cachedLikedThemes));
-                return;
+            if (cacheKey && cacheTimeKey) {
+                const cachedLikedThemes = localStorage.getItem(cacheKey);
+                const cacheTime = localStorage.getItem(cacheTimeKey);
+
+                if (cachedLikedThemes && cacheTime && now - parseInt(cacheTime, 10) < 3600000) {
+                    setLikedThemes(JSON.parse(cachedLikedThemes));
+                    return;
+                }
             }
 
-            const response = await fetch("/api/likes/get", {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                }
-            }).then((res) => res.json());
+            try {
+                const response = await fetch("/api/likes/get", {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`
+                    }
+                });
 
-            localStorage.setItem("likedThemes", JSON.stringify(response));
-            localStorage.setItem("ct", now.toString());
-            setLikedThemes(response);
+                if (!response.ok) return;
+
+                const data = await response.json();
+                if (cacheKey && cacheTimeKey) {
+                    localStorage.setItem(cacheKey, JSON.stringify(data));
+                    localStorage.setItem(cacheTimeKey, now.toString());
+                }
+                setLikedThemes(data);
+            } catch {
+                // ignore network/parse errors, keep whatever is cached
+            }
         }
 
-        if (token && isAuthenticated) {
+        if (isAuthenticated) {
             setUser(authorizedUser);
             getLikedThemes();
         } else {
@@ -128,24 +121,22 @@ function App({ themes }: { themes: Theme[] }) {
     const lowerQuery = deferredQuery.toLowerCase();
 
     const filteredThemes = React.useMemo(() => {
-        if (isLoading) return [];
         return themesOnly
             .filter((t) => {
                 const match = (t.name ?? "").toLowerCase().includes(lowerQuery) || (t.description ?? "").toLowerCase().includes(lowerQuery);
                 return match;
             })
             .sort((a, b) => (b.downloads ?? 0) - (a.downloads ?? 0));
-    }, [themesOnly, lowerQuery, isLoading]);
+    }, [themesOnly, lowerQuery]);
 
     const filteredSnippets = React.useMemo(() => {
-        if (isLoading) return [];
         return snippetsOnly
             .filter((t) => {
                 const match = (t.name ?? "").toLowerCase().includes(lowerQuery) || (t.description ?? "").toLowerCase().includes(lowerQuery);
                 return match;
             })
             .sort((a, b) => (b.downloads ?? 0) - (a.downloads ?? 0));
-    }, [snippetsOnly, lowerQuery, isLoading]);
+    }, [snippetsOnly, lowerQuery]);
 
     const handleSubmit = () => {
         if (isValid) {
@@ -191,7 +182,7 @@ function App({ themes }: { themes: Theme[] }) {
                             </div>
 
                             <div className="lg:col-span-1">
-                                <HeroHighlights themes={popularThemes} />
+                                <MemoizedHeroHighlights themes={popularThemes} />
                             </div>
                         </div>
                     </div>
@@ -203,7 +194,7 @@ function App({ themes }: { themes: Theme[] }) {
                     <h2 className="text-2xl font-semibold mb-2 text-primary mt-6">Recently Updated</h2>
                     <p className="text-foreground">Latest themes and updates from the community</p>
                 </div>
-                <ThemeCarousel themes={themesOnly} />
+                <MemoizedThemeCarousel themes={themesOnly} />
             </div>
 
             <Tabs defaultValue="themes" className="w-full mb-8">
@@ -217,15 +208,13 @@ function App({ themes }: { themes: Theme[] }) {
                 </TabsList>
 
                 <TabsContent value="themes" className="mt-0">
-                    {isLoading ? (
-                        <SkeletonGrid amount={6} />
-                    ) : error ? (
+                    {error ? (
                         <div className="text-center py-8">
                             <div className="text-destructive text-lg font-medium mb-2">Oops! Something went wrong</div>
                             <div className="text-foreground">Couldn't fetch themes. Please try refreshing the page.</div>
                         </div>
                     ) : filteredThemes.length ? (
-                        <ThemeGrid likedThemes={likedThemes as any as []} themes={filteredThemes} />
+                        <ThemeGrid likedThemes={likedThemes} themes={filteredThemes} />
                     ) : (
                         <NoResults />
                     )}
@@ -244,15 +233,13 @@ function App({ themes }: { themes: Theme[] }) {
                         </AlertDescription>
                     </Alert>
 
-                    {isLoading ? (
-                        <SkeletonGrid amount={6} />
-                    ) : error ? (
+                    {error ? (
                         <div className="text-center py-8">
                             <div className="text-destructive text-lg font-medium mb-2">Oops! Something went wrong</div>
                             <div className="text-foreground">Couldn't fetch snippets. Please try refreshing the page.</div>
                         </div>
                     ) : filteredSnippets.length ? (
-                        <ThemeGrid likedThemes={likedThemes as any as []} themes={filteredSnippets} />
+                        <ThemeGrid likedThemes={likedThemes} themes={filteredSnippets} />
                     ) : (
                         <NoResults />
                     )}

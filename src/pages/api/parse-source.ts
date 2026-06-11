@@ -28,10 +28,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             status: 200,
             content
         });
-    } catch (error: any) {
+    } catch (error) {
         return res.status(400).json({
             status: 400,
-            message: error.message || "Failed to parse source URL"
+            message: error instanceof Error && error.message ? error.message : "Failed to parse source URL"
         });
     }
 }

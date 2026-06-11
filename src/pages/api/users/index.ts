@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import clientPromise from "@utils/db";
+import clientPromise, { THEMES_DB } from "@utils/db";
 import { Collection } from "mongodb";
 import { type Theme } from "@types";
+import { getToken } from "@utils/auth";
 import { ErrorHandler } from "@lib/errorHandler";
 
 async function GET(req: NextApiRequest, res: NextApiResponse) {
@@ -12,19 +13,12 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
 	}
 
 	const { userString: rawUserString } = req.query;
-	const { authorization } = req.headers;
 
-	if (!authorization) {
-		return res.status(400).json({
-			message: "Cannot check authorization without unique token"
-		});
-	}
-
-	const token = authorization.replace("Bearer ", "").trim();
+	const token = getToken(req);
 
 	if (!token) {
-		return res.status(400).json({
-			message: "Cannot check authorization without unique token"
+		return res.status(401).json({
+			message: "Unauthorized - Invalid token"
 		});
 	}
 
@@ -37,7 +31,7 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
 	const userString = Array.isArray(rawUserString) ? rawUserString[0] : rawUserString;
 
 	const client = await clientPromise;
-	const db = client.db("themesDatabase");
+	const db = client.db(THEMES_DB);
 	const users = db.collection("users");
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const themes: Collection<Theme> = db.collection("themes");

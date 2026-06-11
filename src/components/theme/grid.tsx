@@ -1,35 +1,37 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ThemeCard } from "./card";
-import { type Theme } from "@types";
+import { type LikesData, type Theme } from "@types";
 import End from "@components/ui/end-of-page";
 
-export function ThemeGrid({ themes = [], likedThemes = [], disableDownloads = false }: { themes?: Theme[]; likedThemes?: []; disableDownloads?: boolean }) {
+export function ThemeGrid({ themes = [], likedThemes = null, disableDownloads = false }: { themes?: Theme[]; likedThemes?: LikesData | null; disableDownloads?: boolean }) {
     const [currentPage, setCurrentPage] = useState(1);
     const gridRef = useRef<HTMLDivElement>(null);
+    const sentinelRef = useRef<HTMLDivElement>(null);
     const itemsPerPage = 12;
-    const [displayedThemes, setDisplayedThemes] = useState<Theme[]>([]);
-    const [hasMoreThemes, setHasMoreThemes] = useState(true);
 
     useEffect(() => {
-        if (currentPage > Math.ceil(themes.length / itemsPerPage)) {
-            setCurrentPage(1);
-        } else {
-            const newThemes = themes.slice(0, currentPage * itemsPerPage);
-            setDisplayedThemes(newThemes);
-            setHasMoreThemes(newThemes.length < themes.length);
-        }
-    }, [themes, currentPage]);
+        setCurrentPage(1);
+    }, [themes]);
+
+    const displayedThemes = useMemo(() => themes.slice(0, currentPage * itemsPerPage), [themes, currentPage]);
+    const hasMoreThemes = useMemo(() => displayedThemes.length < themes.length, [displayedThemes, themes]);
 
     useEffect(() => {
-        const handleScroll = () => {
-            if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500 && hasMoreThemes) {
-                setCurrentPage((prevPage) => prevPage + 1);
-            }
-        };
+        const sentinel = sentinelRef.current;
+        if (!sentinel || !hasMoreThemes) return;
 
-        window.addEventListener("scroll", handleScroll);
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, [hasMoreThemes]);
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setCurrentPage((prevPage) => prevPage + 1);
+                }
+            },
+            { rootMargin: "500px" }
+        );
+
+        observer.observe(sentinel);
+        return () => observer.disconnect();
+    }, [hasMoreThemes, currentPage]);
 
     return (
         <div className="space-y-6" ref={gridRef}>
@@ -38,6 +40,7 @@ export function ThemeGrid({ themes = [], likedThemes = [], disableDownloads = fa
                     <ThemeCard key={theme.id} theme={theme} likedThemes={likedThemes} disableDownloads={disableDownloads} />
                 ))}
             </div>
+            {hasMoreThemes && <div ref={sentinelRef} className="h-px" aria-hidden="true" />}
             {!hasMoreThemes && <End />}
         </div>
     );

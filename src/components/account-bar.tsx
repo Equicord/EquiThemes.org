@@ -1,11 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
 import { LogOutIcon, Settings, Shield, UserIcon, Lock, Columns3Icon, Plus, ExternalLinkIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@components/ui/dropdown-menu";
 import { cn } from "@lib/utils";
-import { deleteCookie, getCookie } from "@utils/cookies";
-import { type UserData } from "@types";
 import { useWebContext } from "@context/auth";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -17,39 +15,25 @@ interface AccountBarProps {
 }
 
 export function AccountBar({ className }: AccountBarProps) {
-    const [user, setUser] = useState<UserData | object>({});
-    const [isValid, setValid] = useState(null);
     const { authorizedUser, isAuthenticated, isLoading } = useWebContext();
     const router = useRouter();
     const isThemePage = router.pathname === "/";
 
     useEffect(() => {
         if (isLoading) return;
-        const token = getCookie("_dtoken");
 
-        if (token) {
-            setUser(authorizedUser);
-            setValid(isAuthenticated);
-        } else {
-            setValid(isAuthenticated);
+        if (isAuthenticated === false) {
+            fetch("/api/user/logout", { method: "POST" });
         }
-    }, [authorizedUser, isAuthenticated, isLoading]);
+    }, [isAuthenticated, isLoading]);
 
-    useEffect(() => {
-        const token = getCookie("_dtoken");
-
-        if (isValid === false && token) {
-            deleteCookie("_dtoken");
-        }
-    }, [isValid]);
-
-    const handleLogout = () => {
-        document.cookie = "_dtoken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    const handleLogout = async () => {
+        await fetch("/api/user/logout", { method: "POST" });
         window.location.href = "/";
     };
 
     const handleSubmit = () => {
-        if (isValid) {
+        if (isAuthenticated) {
             window.location.href = "/theme/submit";
         } else {
             window.location.href = "/auth/login";
@@ -65,7 +49,7 @@ export function AccountBar({ className }: AccountBarProps) {
                         <ExternalLinkIcon className="h-4 w-4" />
                     </Button>
                     <Button disabled={isLoading} size="sm" className="h-9 flex items-center gap-2" onClick={handleSubmit}>
-                        {isValid ? (
+                        {isAuthenticated ? (
                             <>
                                 <Plus className="h-4 w-4" />
                                 <span className="hidden md:inline">Submit Theme</span>
@@ -80,32 +64,32 @@ export function AccountBar({ className }: AccountBarProps) {
                 </>
             )}
 
-            {isValid && user && (
+            {isAuthenticated && (
                 <NotificationsBell />
             )}
 
-            {isValid && user ? (
+            {isAuthenticated ? (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <div className={cn("flex items-center gap-2 hover:opacity-90 transition-all", className)}>
                             <Avatar className="h-8 w-8 cursor-pointer ring-2 ring-transparent hover:ring-primary/20 transition-all">
-                                <AvatarImage src={`https://cdn.discordapp.com/avatars/${(user as UserData)?.id}/${(user as UserData)?.avatar}.png`} />
-                                <AvatarFallback className="overflow-hidden">{(user as UserData)?.global_name}</AvatarFallback>
+                                <AvatarImage src={`https://cdn.discordapp.com/avatars/${authorizedUser?.id}/${authorizedUser?.avatar}.png`} />
+                                <AvatarFallback className="overflow-hidden">{authorizedUser?.global_name}</AvatarFallback>
                             </Avatar>
                         </div>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56 p-2 space-y-1">
                         <div className="px-2 py-1.5 mb-2">
                             <div className="flex items-center gap-2">
-                                <p className="text-sm font-medium">{(user as UserData)?.global_name}</p>
-                                {(user as UserData)?.admin && (
+                                <p className="text-sm font-medium">{authorizedUser?.global_name}</p>
+                                {authorizedUser?.admin && (
                                     <Badge className="h-5 m-1 px-1.5 fill-current select-none">
                                         <Shield className="w-2.5 h-2.5 mr-1" />
                                         Admin
                                     </Badge>
                                 )}
                             </div>
-                            <p className="text-xs text-muted-foreground">{(user as UserData)?.id}</p>
+                            <p className="text-xs text-muted-foreground">{authorizedUser?.id}</p>
                         </div>
                         <DropdownMenuSeparator />
 
@@ -113,7 +97,7 @@ export function AccountBar({ className }: AccountBarProps) {
                             <UserIcon className="h-4 w-4" />
                             My Profile
                         </DropdownMenuItem>
-                        {(user as UserData).admin && (
+                        {authorizedUser?.admin && (
                             <DropdownMenuItem onClick={() => (window.location.href = "/admin")} className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-accent rounded-md transition-colors">
                                 <Lock className="h-4 w-4" />
                                 Admin Panel
@@ -135,8 +119,7 @@ export function AccountBar({ className }: AccountBarProps) {
                     </DropdownMenuContent>
                 </DropdownMenu>
             ) : (
-                typeof window != "undefined" &&
-                window.location.href === "/" && (
+                isThemePage && (
                     <Button
                         onClick={() => {
                             localStorage.setItem("redirect", window.location.href);

@@ -1,20 +1,16 @@
-import clientPromise from "@utils/db";
+import clientPromise, { THEMES_DB } from "@utils/db";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { isAuthed } from "@utils/auth";
+import { getToken, isAuthed } from "@utils/auth";
 import { ErrorHandler } from "@lib/errorHandler";
+import type { Theme } from "@types";
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
     const { id } = req.query;
-    const { authorization } = req.headers;
 
-    if (!authorization) {
-        return res.status(400).json({ message: "Cannot check authorization without unique token" });
-    }
-
-    const token = authorization.replace("Bearer ", "").trim();
+    const token = getToken(req);
 
     if (!token) {
-        return res.status(400).json({ status: 400, message: "Invalid Request, unique user token is missing" });
+        return res.status(401).json({ status: 401, message: "Given token is not authorized" });
     }
 
     const user = await isAuthed(token as string);
@@ -25,7 +21,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     try {
         const client = await clientPromise;
-        const themesDb = client.db("themesDatabase");
+        const themesDb = client.db(THEMES_DB);
         const themesCollection = themesDb.collection("themes");
 
         const theme = await themesCollection.findOne({ id: Number(id as string) });
@@ -37,11 +33,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             });
         }
 
-        
-        const userIdStr = user.id.toString();
-        const authorIdStr = theme.author?.discord_snowflake?.toString();
 
-        if (authorIdStr !== userIdStr && !user.admin) {
+        const userIdStr = user.id.toString();
+        const authors = Array.isArray(theme.author) ? theme.author : [theme.author];
+        const isAuthor = authors.some((a) => a?.discord_snowflake?.toString() === userIdStr);
+
+        if (!isAuthor && !user.admin) {
             return res.status(403).json({
                 status: 403,
                 message: "You do not have permission to modify this theme"
@@ -50,7 +47,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
         
         if (req.method === "PUT") {
-            const { name, description, version, content, sourceLink, tags } = req.body;
+            const { name, description, version, content, sourceLink, tags, last_updated } = req.body;
 
             
             if (!name || !description || !sourceLink) {
@@ -62,21 +59,32 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             }
 
             
-            const updateData: any = {
+            const updateData: Partial<Theme> = {
                 name,
                 description,
-                source: sourceLink, 
-                tags: tags || []
+                source: sourceLink,
+                ...(tags !== undefined && { tags })
             };
 
-            
+
             if (version) {
                 updateData.version = version;
             }
 
-            
+
             if (content) {
                 updateData.content = Buffer.from(content).toString("base64");
+            }
+
+
+            if (last_updated !== undefined) {
+                if (typeof last_updated !== "string" || Number.isNaN(Date.parse(last_updated))) {
+                    return res.status(400).json({
+                        status: 400,
+                        message: "Invalid last_updated, expected a parseable date string"
+                    });
+                }
+                updateData.last_updated = last_updated;
             }
 
             
@@ -125,12 +133,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         }
 
         return res.status(405).json({ message: "Method not allowed" });
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error processing theme request:", error);
         return res.status(500).json({
             status: 500,
             message: "Internal server error",
-            error: error.message
+            error: error instanceof Error ? error.message : "Unknown error"
         });
     }
 }

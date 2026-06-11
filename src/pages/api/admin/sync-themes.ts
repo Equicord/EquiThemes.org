@@ -1,23 +1,17 @@
 import { ErrorHandler } from "@lib/errorHandler";
-import clientPromise from "@utils/db";
+import clientPromise, { SUBMISSIONS_DB, THEMES_DB } from "@utils/db";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { isAuthed } from "@utils/auth";
+import { getToken, isAuthed } from "@utils/auth";
 
 async function POST(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "POST") {
         return res.status(405).json({ message: "Method not allowed", wants: "POST" });
     }
 
-    const { authorization } = req.headers;
-
-    if (!authorization) {
-        return res.status(400).json({ message: "Cannot check authorization without unique token" });
-    }
-
-    const token = authorization.replace("Bearer ", "").trim();
+    const token = getToken(req);
 
     if (!token) {
-        return res.status(400).json({ status: 400, message: "Invalid Request, unique user token is missing" });
+        return res.status(403).json({ status: 403, message: "Unauthorized. Admin access required." });
     }
 
     const user = await isAuthed(token as string);
@@ -28,13 +22,13 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
 
     try {
         const client = await clientPromise;
-        const themesDb = client.db("themesDatabase");
+        const themesDb = client.db(THEMES_DB);
         const themesCollection = themesDb.collection("themes");
 
         const themes = await themesCollection.find({}, { projection: { _id: 0 } }).toArray();
         const approvedTotal = themes.length;
 
-        const submittedDb = client.db("submittedThemesDatabase");
+        const submittedDb = client.db(SUBMISSIONS_DB);
         const pendingCollection = submittedDb.collection("pending");
         const submissions = await pendingCollection.find({}).toArray();
         const submissionUpdates = [];

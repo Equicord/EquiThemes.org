@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { isAuthed } from "@utils/auth";
+import { getToken, isAuthed } from "@utils/auth";
 import { ErrorHandler } from "@lib/errorHandler";
 
 async function GET(req: NextApiRequest, res: NextApiResponse) {
@@ -7,16 +7,10 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
         return res.status(405).json({ message: "Method not allowed", wants: "GET" });
     }
 
-    const { authorization } = req.headers;
-
-    if (!authorization) {
-        return res.status(400).json({ message: "Cannot check authorization without unique token" });
-    }
-
-    const token = authorization.replace("Bearer ", "").trim();
+    const token = getToken(req);
 
     if (!token) {
-        return res.status(400).json({ message: "Cannot check authorization without unique token" });
+        return res.status(401).json({ status: 401, message: "No user found with those credentials" });
     }
 
     const user = await isAuthed(token as string);
@@ -26,7 +20,20 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
     if (!user) {
         res.status(500).json({ status: 404, message: "No user found with those credentials" });
     } else {
-        res.status(200).json({ status: 200, user });
+        const publicUser = {
+            id: user.id,
+            admin: user.admin ?? false,
+            avatar: user.avatar,
+            global_name: user.global_name,
+            preferredColor: user.preferredColor,
+            bannedFromSubmissions: user.bannedFromSubmissions ?? false,
+            banReason: user.banReason,
+            githubAccount: user.githubAccount ?? "unverified",
+            donationLink: user.donationLink,
+            websiteLink: user.websiteLink,
+            socials: user.socials
+        };
+        res.status(200).json({ status: 200, user: publicUser });
     }
 }
 

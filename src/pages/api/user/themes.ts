@@ -1,8 +1,8 @@
 "use cache";
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import clientPromise from "@utils/db";
-import { isAuthed } from "@utils/auth";
+import clientPromise, { THEMES_DB } from "@utils/db";
+import { getToken, isAuthed } from "@utils/auth";
 import { ErrorHandler } from "@lib/errorHandler";
 
 async function POST(req: NextApiRequest, res: NextApiResponse) {
@@ -11,16 +11,15 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
     }
 
     const { userId } = req.body;
-    const { authorization } = req.headers;
 
-    const token = authorization?.replace("Bearer ", "").trim();
+    const token = getToken(req);
 
     if (!token && !userId) {
         return res.status(400).json({ message: "Cannot get themes without unique token or user ID" });
     }
 
     const client = await clientPromise;
-    const db = client.db("themesDatabase");
+    const db = client.db(THEMES_DB);
     const users = db.collection("users");
 
     let requestedUser;

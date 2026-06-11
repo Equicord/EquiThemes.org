@@ -1,6 +1,6 @@
-import clientPromise from "@utils/db";
+import clientPromise, { THEMES_DB } from "@utils/db";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { isAuthed } from "@utils/auth";
+import { getToken, isAuthed } from "@utils/auth";
 import { ErrorHandler } from "@lib/errorHandler";
 
 async function POST(req: NextApiRequest, res: NextApiResponse) {
@@ -8,16 +8,10 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
         return res.status(405).json({ message: "Method not allowed", wants: "POST" });
     }
 
-    const { authorization } = req.headers;
-
-    if (!authorization) {
-        return res.status(400).json({ message: "Cannot check authorization without unique token" });
-    }
-
-    const token = authorization.replace("Bearer ", "").trim();
+    const token = getToken(req);
 
     if (!token) {
-        return res.status(400).json({ status: 400, message: "Invalid Request, unique user token is missing" });
+        return res.status(401).json({ status: 401, message: "Given token is not authorized" });
     }
 
     const user = await isAuthed(token as string);
@@ -37,7 +31,7 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
 
     try {
         const client = await clientPromise;
-        const submittedDb = client.db("themesDatabase");
+        const submittedDb = client.db(THEMES_DB);
         const notificationsCollection = submittedDb.collection("notifications");
 
         const result = await notificationsCollection.updateMany(

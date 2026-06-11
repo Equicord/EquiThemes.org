@@ -8,14 +8,15 @@ import type {
     InferGetStaticPropsType
 } from "next";
 import App from "@components/page/theme-info";
-import { type Theme } from "@types";
+import { type Theme, type ThemeListItem } from "@types";
 import { SERVER } from "@constants";
+import clientPromise, { THEMES_DB } from "@utils/db";
 
 export const getStaticPaths: GetStaticPaths = async () => {
-    const res = await fetch(`${SERVER}/api/themes`);
-    const themesData = await res.json();
+    const res = await fetch(`${SERVER}/api/themes?content=false`);
+    const themesData: ThemeListItem[] = await res.json();
 
-    const paths = themesData.map((theme: any) => ({
+    const paths = themesData.map((theme) => ({
         params: { id: String(theme.id) }
     }));
 
@@ -27,16 +28,38 @@ export const getStaticPaths: GetStaticPaths = async () => {
 
 export const getStaticProps = (async (context) => {
     const { id } = context.params!;
-    const res = await fetch(`${SERVER}/api/themes?content=true`);
-    const themesData = await res.json();
+    const idString = String(id);
 
-    const theme = themesData.find((x: any) => String(x.id) === id || x.name.toLowerCase() === (id as string).toLowerCase());
+    let theme: ThemeListItem | null = null;
+
+    const client = await clientPromise;
+    if (typeof client?.db === "function") {
+        const db = client.db(THEMES_DB);
+        const themesCollection = db.collection("themes");
+
+        const query = /^\d+$/.test(idString)
+            ? { id: Number(idString) }
+            : { name: { $regex: new RegExp(`^${idString.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } };
+
+        theme = (await themesCollection.findOne(query, { projection: { _id: 0 } })) as unknown as ThemeListItem | null;
+    } else {
+        const res = await fetch(`${SERVER}/api/themes?content=false`);
+        const themesData: ThemeListItem[] = await res.json();
+        theme = themesData.find((x) => String(x.id) === idString || x.name.toLowerCase() === idString.toLowerCase()) ?? null;
+
+        if (theme) {
+            const cssRes = await fetch(`${SERVER}/api/${theme.id}`);
+            if (cssRes.ok) {
+                theme.content = Buffer.from(await cssRes.text()).toString("base64");
+            }
+        }
+    }
 
     if (!theme) {
         return { notFound: true };
     }
 
-    return { props: { theme }, revalidate: 60 };
+    return { props: { theme: JSON.parse(JSON.stringify(theme)) as Theme }, revalidate: 60 };
 }) satisfies GetStaticProps<{
     theme: Theme;
 }>;

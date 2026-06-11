@@ -1,11 +1,11 @@
 import App from "@components/page/theme-list";
 import { useWebContext } from "@context/auth";
-import clientPromise from "@utils/db";
+import clientPromise, { SUBMISSIONS_DB } from "@utils/db";
 import { getUser } from "@utils/auth";
 
 export async function getServerSideProps({ req }) {
     const client = await clientPromise;
-    const db = client.db("submittedThemesDatabase");
+    const db = client.db(SUBMISSIONS_DB);
     const themesCollection = db.collection("pending");
 
     const cookieHeader = req.headers.cookie || "";
@@ -30,7 +30,7 @@ export async function getServerSideProps({ req }) {
 
     const themes = await themesCollection.find({}, {
         projection: { themeContent: 0, file: 0, fileUrl: 0 }
-    }).toArray();
+    }).sort({ submittedAt: -1 }).toArray();
 
     return {
         props: {
@@ -48,7 +48,7 @@ export default function ThemeSubmittedList({ initialThemes, isAdmin: initialIsAd
     return (
         <div className="min-h-screen flex flex-col">
             <main className="flex-grow container mx-auto flex flex-col mt-6">
-                {isLoading && !initialThemes ? (
+                {isLoading ? (
                     <div className="text-center text-lg text-foreground">Loading...</div>
                 ) : !isAdmin ? (
                     <div className="text-center text-lg text-foreground">

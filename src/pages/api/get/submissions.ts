@@ -1,35 +1,12 @@
-import clientPromise from "@utils/db";
+import clientPromise, { SUBMISSIONS_DB } from "@utils/db";
 import { ObjectId } from "mongodb";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { isAuthed } from "@utils/auth";
+import { getToken, isAuthed } from "@utils/auth";
 import { ErrorHandler } from "@lib/errorHandler";
-export interface ValidatedUser {
-    id: string;
-    username: string;
-    avatar: string;
-}
 
-export interface SubmittedAt {
-    $date: string;
-}
-
-export interface Moderator {
-    discord_snowflake: string;
-    discord_name: string;
-    avatar_url: string;
-}
-
-export interface RootObject {
-    title: string;
-    description: string;
-    sourceLink: string;
-    validatedUsers: { [key: string]: ValidatedUser };
-    themeContent: string;
-    submittedAt: SubmittedAt;
-    reason: string;
-    state: string;
-    moderator: Moderator;
-}
+// These domain types now live in src/types; ThemeSubmission replaces the old
+// local RootObject interface.
+export type { ValidatedUser, SubmittedAt, Moderator, ThemeSubmission } from "@types";
 
 async function GET(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "GET") {
@@ -37,19 +14,13 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
     }
 
     const client = await clientPromise;
-    const db = client.db("submittedThemesDatabase");
+    const db = client.db(SUBMISSIONS_DB);
     const themesCollection = db.collection("pending");
 
-    const { authorization } = req.headers;
-
-    if (!authorization) {
-        return res.status(400).json({ message: "Cannot check authorization without unique token" });
-    }
-
-    const token = authorization?.replace("Bearer ", "")?.trim() ?? null;
+    const token = getToken(req);
 
     if (!token) {
-        return res.status(400).json({ message: "Invalid Request, unique user token is missing" });
+        return res.status(401).json({ status: 401, message: "Given token is not authorized" });
     }
 
     const user = await isAuthed(token as string);

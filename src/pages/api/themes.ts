@@ -1,5 +1,5 @@
 import { ErrorHandler } from "@lib/errorHandler";
-import clientPromise from "@utils/db";
+import clientPromise, { THEMES_DB } from "@utils/db";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 async function GET(req: NextApiRequest, res: NextApiResponse) {
@@ -8,11 +8,11 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
     }
 
     const client = await clientPromise;
-    const db = client.db("themesDatabase");
+    const db = client.db(THEMES_DB);
     const themesCollection = db.collection("themes");
 
     const includeContent = req.query.content !== "false";
-    const projection: any = { _id: 0 };
+    const projection: Record<string, 0 | 1> = { _id: 0 };
     if (!includeContent) {
         projection.content = 0;
     }

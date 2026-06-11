@@ -4,31 +4,45 @@ import { Button } from "@components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@components/ui/dropdown-menu";
 import { Badge } from "@components/ui/badge";
 import { getCookie } from "@utils/cookies";
+import { useWebContext } from "@context/auth";
 import { cn } from "@lib/utils";
 import type { Notification } from "@types";
 
 let notificationCache: Notification[] = [];
+let cacheToken: string | undefined;
 let lastFetchTime: number = 0;
-const CACHE_DURATION = 30000; 
+const CACHE_DURATION = 30000;
 
 export function NotificationsBell() {
+    const { isAuthenticated } = useWebContext();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [open, setOpen] = useState(false);
     const [isMarkingRead, setIsMarkingRead] = useState(false);
 
-    
+
     useEffect(() => {
+        if (!isAuthenticated) return;
+
         const preloadNotifications = async () => {
+            const token = getCookie("_dtoken");
+
+            if (cacheToken !== token) {
+                notificationCache = [];
+                cacheToken = undefined;
+                lastFetchTime = 0;
+            }
+
             try {
                 const response = await fetch("/api/user/notifications", {
                     headers: {
-                        Authorization: `Bearer ${getCookie("_dtoken")}`
+                        Authorization: `Bearer ${token}`
                     }
                 });
                 if (response.ok) {
                     const data = await response.json();
                     notificationCache = data;
+                    cacheToken = token;
                     lastFetchTime = Date.now();
                     setNotifications(data);
                 }
@@ -39,16 +53,22 @@ export function NotificationsBell() {
 
         preloadNotifications();
 
-        
-        const interval = setInterval(preloadNotifications, 30000);
+
+        const interval = setInterval(() => {
+            if (document.hidden) return;
+            preloadNotifications();
+        }, 30000);
         return () => clearInterval(interval);
-    }, []);
+    }, [isAuthenticated]);
 
     const fetchNotifications = async () => {
+        if (!isAuthenticated) return;
+
         const now = Date.now();
-        
-        
-        if (now - lastFetchTime < CACHE_DURATION && notificationCache.length > 0) {
+        const token = getCookie("_dtoken");
+
+
+        if (cacheToken === token && now - lastFetchTime < CACHE_DURATION && notificationCache.length > 0) {
             setNotifications(notificationCache);
             return;
         }
@@ -57,12 +77,13 @@ export function NotificationsBell() {
         try {
             const response = await fetch("/api/user/notifications", {
                 headers: {
-                    Authorization: `Bearer ${getCookie("_dtoken")}`
+                    Authorization: `Bearer ${token}`
                 }
             });
             if (response.ok) {
                 const data = await response.json();
                 notificationCache = data;
+                cacheToken = token;
                 lastFetchTime = now;
                 setNotifications(data);
             }
@@ -81,14 +102,15 @@ export function NotificationsBell() {
 
     const handleMarkAllAsRead = async () => {
         setIsMarkingRead(true);
+        const previous = notifications;
         try {
-            
+
             const updatedNotifications = notifications.map((n) => ({ ...n, read: true }));
             setNotifications(updatedNotifications);
             notificationCache = updatedNotifications;
 
-            
-            await fetch("/api/user/notifications/mark-read", {
+
+            const response = await fetch("/api/user/notifications/mark-read", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -96,10 +118,15 @@ export function NotificationsBell() {
                 },
                 body: JSON.stringify({ markAllAsRead: true })
             });
+
+            if (!response.ok) {
+                throw new Error(`Failed to mark notifications as read (${response.status})`);
+            }
         } catch (error) {
             console.error("Failed to mark notifications as read:", error);
-            
-            setNotifications(notificationCache);
+
+            setNotifications(previous);
+            notificationCache = previous;
         } finally {
             setIsMarkingRead(false);
         }

@@ -5,7 +5,7 @@
 
 import { useRouter } from "next/navigation";
 import { Button } from "@components/ui/button";
-import { MouseEvent, useEffect, useState } from "react";
+import { memo, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import Head from "next/head";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -15,19 +15,55 @@ import { Card, CardContent } from "@components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
 import { useToast } from "@hooks/use-toast";
 import { getCookie } from "@utils/cookies";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import { SERVER } from "@constants";
+import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
+import css from "react-syntax-highlighter/dist/esm/languages/prism/css";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { EditThemeModal } from "@components/theme/edit-modal";
 import { ConfirmDialog } from "@components/ui/confirm-modal";
-import { type Theme } from "@types";
-import { Download as DownloadIcon, Favorite as HeartIcon, FavoriteBorder as HeartOutlineIcon, CalendarMonth as CalendarIcon, BookOutlined as BookIcon, Code as CodeIcon, ContentCopy as CopyIcon, Done as CheckIcon, GitHub as GithubIcon, RemoveRedEye as EyeIcon, OpenInNew as ExternalLinkIcon, Edit as EditIcon, Delete as DeleteIcon } from "@mui/icons-material";
+import { type LikesData, type Theme, type ThemeUpdatePayload } from "@types";
+import { Download as DownloadIcon, Heart as HeartOutlineIcon, Calendar as CalendarIcon, BookOpen as BookIcon, Code as CodeIcon, Copy as CopyIcon, Check as CheckIcon, Github as GithubIcon, Eye as EyeIcon, ExternalLink as ExternalLinkIcon, Pencil as EditIcon, Trash2 as DeleteIcon, type LucideProps } from "lucide-react";
+
+const HeartIcon = (props: LucideProps) => <HeartOutlineIcon fill="currentColor" {...props} />;
+
+SyntaxHighlighter.registerLanguage("css", css);
 
 const Skeleton = ({ className = "", ...props }) => <div className={`animate-pulse bg-muted/30 rounded ${className}`} {...props} />;
+
+const decodeThemeContent = (content: string) => {
+    try {
+        return atob(content);
+    } catch {
+        return content;
+    }
+};
+
+const ThemeCodeBlock = memo(function ThemeCodeBlock({ content }: { content: string }) {
+    return (
+        <SyntaxHighlighter
+            language="css"
+            style={vscDarkPlus}
+            customStyle={{
+                maxHeight: 500,
+                borderRadius: "0.75rem",
+                fontSize: "0.875rem",
+                background: "transparent",
+                margin: 0,
+                padding: "1rem",
+                fontFamily: '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
+            }}
+            codeTagProps={{ style: { fontFamily: "inherit" } }}
+            wrapLongLines={true}
+        >
+            {content}
+        </SyntaxHighlighter>
+    );
+});
 
 export default function Component({ id, theme }: { id?: string; theme: Theme }) {
     const [isDownloaded, setIsDownloaded] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
-    const [likedThemes, setLikedThemes] = useState();
+    const [likedThemes, setLikedThemes] = useState<LikesData | null>(null);
     const [isLikeDisabled, setIsLikeDisabled] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const { authorizedUser, isAuthenticated, isLoading, mutateThemes } = useWebContext();
@@ -39,15 +75,48 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
     const router = useRouter();
     const previewUrl = `/api/preview?url=/api/${id}`;
 
-    useEffect(() => {
-        setIsMobile(window.innerWidth <= 768);
+    const downloadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const likeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-        const handleResize = () => {
-            setIsMobile(window.innerWidth <= 768);
+    const decodedContent = useMemo(() => decodeThemeContent(theme?.content ?? ""), [theme?.content]);
+
+    const statsItems = useMemo(
+        () => [
+            {
+                icon: DownloadIcon,
+                label: "Downloads",
+                value: theme?.downloads || 0
+            },
+            {
+                icon: HeartIcon,
+                label: "Likes",
+                value: theme?.likes || 0
+            },
+            {
+                icon: CalendarIcon,
+                label: "Created",
+                value: theme?.release_date ? new Date(theme.release_date).toLocaleDateString("en-US", { timeZone: "UTC", year: "numeric", month: "short", day: "numeric" }) : "Recently"
+            },
+            {
+                icon: BookIcon,
+                label: "Version",
+                value: theme?.version || "1.0.0"
+            }
+        ],
+        [theme]
+    );
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia("(max-width: 768px)");
+        setIsMobile(mediaQuery.matches);
+
+        const handleChange = (event: MediaQueryListEvent) => {
+            setIsMobile(event.matches);
         };
 
-        window.addEventListener("resize", handleResize);
-        return () => window.removeEventListener("resize", handleResize);
+        mediaQuery.addEventListener("change", handleChange);
+        return () => mediaQuery.removeEventListener("change", handleChange);
     }, []);
 
     useEffect(() => {
@@ -55,6 +124,14 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
             getLikedThemes();
         }
     }, [isAuthenticated]);
+
+    useEffect(() => {
+        return () => {
+            if (downloadTimeoutRef.current) clearTimeout(downloadTimeoutRef.current);
+            if (likeTimeoutRef.current) clearTimeout(likeTimeoutRef.current);
+            if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+        };
+    }, []);
 
     if (!id) {
         return (
@@ -72,7 +149,7 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
         window.open(`https://github.com/${githubName}`, "_blank");
     };
 
-    const handleEdit = async (updatedTheme) => {
+    const handleEdit = async (updatedTheme: ThemeUpdatePayload) => {
         try {
             const response = await fetch(`/api/themes/${theme.id}`, {
                 method: "PUT",
@@ -100,10 +177,10 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
             
             
             window.location.reload();
-        } catch (error: any) {
+        } catch (error) {
             toast({
                 title: "Error",
-                description: error.message || "Failed to update theme",
+                description: (error instanceof Error && error.message) || "Failed to update theme",
                 variant: "destructive"
             });
         }
@@ -128,10 +205,10 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
                 description: "Theme deleted successfully"
             });
             window.location.href = "/";
-        } catch (error: any) {
+        } catch (error) {
             toast({
                 title: "Error",
-                description: error.message || "Failed to delete theme",
+                description: (error instanceof Error && error.message) || "Failed to delete theme",
                 variant: "destructive"
             });
         }
@@ -180,7 +257,8 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
 
         window.location.href = `/api/download/${theme.id}`;
 
-        setTimeout(() => {
+        if (downloadTimeoutRef.current) clearTimeout(downloadTimeoutRef.current);
+        downloadTimeoutRef.current = setTimeout(() => {
             setIsDownloaded(false);
         }, 5000);
     };
@@ -193,14 +271,19 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
 
         const token = getCookie("_dtoken");
         let response: Response;
-        // @ts-ignore
         const isCurrentlyLiked = likedThemes?.likes?.find((t) => t.themeId === themeId)?.hasLiked;
 
-        setLikedThemes((prev) => ({
-            // @ts-ignore
-            ...prev,
-            likes: (prev as any)!.likes.map((like) => (like.themeId === themeId ? { ...like, hasLiked: !isCurrentlyLiked } : like))
-        }));
+        setLikedThemes((prev) => {
+            if (!prev) return prev;
+
+            const likes = prev.likes ?? [];
+            const hasEntry = likes.some((like) => like.themeId === themeId);
+
+            return {
+                ...prev,
+                likes: hasEntry ? likes.map((like) => (like.themeId === themeId ? { ...like, hasLiked: !isCurrentlyLiked } : like)) : [...likes, { themeId, hasLiked: true }]
+            };
+        });
 
         try {
             if (isCurrentlyLiked) {
@@ -224,29 +307,34 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
             }
 
             if (!response.ok) {
-                setLikedThemes((prev) => ({
-                    // @ts-ignore
+                setLikedThemes((prev) => (prev ? {
                     ...prev,
-                    likes: (prev as any)!.likes.map((like) => (like.themeId === themeId ? { ...like, hasLiked: isCurrentlyLiked } : like))
-                }));
+                    likes: prev.likes.map((like) => (like.themeId === themeId ? { ...like, hasLiked: isCurrentlyLiked } : like))
+                } : prev));
 
                 toast({
                     description: "Failed to like theme, try again later."
                 });
+            } else {
+                try {
+                    localStorage.removeItem("likedThemes");
+                    localStorage.removeItem("ct");
+                } catch {
+                    // ignore storage errors
+                }
             }
         } catch {
-            setLikedThemes((prev) => ({
-                // @ts-ignore
+            setLikedThemes((prev) => (prev ? {
                 ...prev,
-                likes: (prev as any)!.likes.map((like) => (like.themeId === themeId ? { ...like, hasLiked: isCurrentlyLiked } : like))
-            }));
+                likes: prev.likes.map((like) => (like.themeId === themeId ? { ...like, hasLiked: isCurrentlyLiked } : like))
+            } : prev));
 
             toast({
                 description: "Failed to like theme, try again later."
             });
         }
 
-        setTimeout(() => {
+        likeTimeoutRef.current = setTimeout(() => {
             setIsLikeDisabled(false);
         }, 1500);
     };
@@ -254,72 +342,38 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
     async function getLikedThemes() {
         const token = getCookie("_dtoken");
 
-        const response = await fetch("/api/likes/get", {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`
-            }
-        }).then((res) => res.json());
+        try {
+            const response = await fetch("/api/likes/get", {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                }
+            });
 
-        setLikedThemes(response);
+            if (!response.ok) return;
+
+            const data = await response.json();
+            setLikedThemes(data);
+        } catch {
+            // ignore network errors, keep existing state
+        }
     }
 
-    const decodeThemeContent = (content: string) => {
-        try {
-            return atob(content);
-        } catch {
-            return content;
-        }
-    };
+    const themeAuthors = Array.isArray(theme?.author) ? theme.author : [theme?.author];
+    const isThemeAuthor = themeAuthors.some((a) => a?.discord_snowflake?.toString() === authorizedUser?.id?.toString());
 
     const handleCopyCode = (content: string) => {
         navigator.clipboard.writeText(content);
         setIsCopied(true);
-        setTimeout(() => setIsCopied(false), 2000);
+        if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+        copyTimeoutRef.current = setTimeout(() => setIsCopied(false), 2000);
     };
-
-    const statsItems = [
-        {
-            icon: DownloadIcon,
-            label: "Downloads",
-            value: theme?.downloads || 0
-        },
-        {
-            icon: HeartIcon,
-            label: "Likes",
-            value: theme?.likes || 0
-        },
-        {
-            icon: CalendarIcon,
-            label: "Created",
-            value: theme?.release_date ? new Date(theme.release_date).toLocaleDateString() : "Recently"
-        },
-        {
-            icon: BookIcon,
-            label: "Version",
-            value: theme?.version || "1.0.0"
-        }
-    ];
-
-    const ThemeStats = () => (
-        <div className="grid grid-cols-2 gap-4 mt-6 select-none">
-            {statsItems.map(({ icon: Icon, label, value }) => (
-                <Card key={label} className="p-4">
-                    <CardContent className="p-0 flex flex-col items-center">
-                        <Icon className="h-5 w-5 text-muted-foreground mb-2" />
-                        <p className="text-xl font-bold">{value}</p>
-                        <p className="text-xs text-muted-foreground">{label}</p>
-                    </CardContent>
-                </Card>
-            ))}
-        </div>
-    );
 
     return (
         <>
             <Head>
-                <title>{theme.name} - Discord Theme</title>
+                <title>{`${theme.name} - Discord Theme`}</title>
                 <meta name="description" content={theme.description} />
                 <meta name="keywords" content={theme.tags.join(", ")} />
                 <meta name="author" content="themes.equicord.org" />
@@ -328,7 +382,7 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
                 <meta property="og:title" content={theme.name} />
                 <meta property="og:description" content={theme.description} />
                 <meta property="og:image" content={theme.thumbnail_url} />
-                <meta property="og:url" content="https://themes.equicord.org" />
+                <meta property="og:url" content={`${SERVER}/theme/${id}`} />
                 <meta
                     property="og:site_name"
                     content={`${
@@ -387,7 +441,7 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
                                                 <Button 
                                                     variant="outline" 
                                                     size="sm" 
-                                                    onClick={() => handleCopyCode(decodeThemeContent(theme.content))} 
+                                                    onClick={() => handleCopyCode(decodedContent)}
                                                     className="flex items-center gap-2 hover:text-foreground hover:border-foreground"
                                                 >
                                                     {isCopied ? (
@@ -405,23 +459,7 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
                                             </div>
 
                                             <div className="codeblock rounded-2xl border border-border/30 bg-muted/10 p-4 relative overflow-hidden">
-                                                <SyntaxHighlighter
-                                                    language="css"
-                                                    style={vscDarkPlus}
-                                                    customStyle={{
-                                                        maxHeight: 500,
-                                                        borderRadius: "0.75rem",
-                                                        fontSize: "0.875rem",
-                                                        background: "transparent",
-                                                        margin: 0,
-                                                        padding: "1rem",
-                                                        fontFamily: '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
-                                                    }}
-                                                    codeTagProps={{ style: { fontFamily: "inherit" } }}
-                                                    wrapLongLines={true}
-                                                >
-                                                    {decodeThemeContent(theme.content)}
-                                                </SyntaxHighlighter>
+                                                <ThemeCodeBlock content={decodedContent} />
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -499,9 +537,7 @@ export default function Component({ id, theme }: { id?: string; theme: Theme }) 
 
                             {!isLoading &&
                                 isAuthenticated &&
-                                (authorizedUser?.id ===
-                                    // @ts-ignore
-                                    theme?.author?.discord_snowflake ||
+                                (isThemeAuthor ||
                                     authorizedUser?.is_admin) && (
                                     <Card className="border-destructive/20">
                                         <CardContent className="p-6">

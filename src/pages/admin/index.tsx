@@ -15,15 +15,13 @@ import {
 	Loader2,
 	Search,
 	Bell,
-} from "lucide-react";
-import {
-	PendingActions as PendingIcon,
-	People as UsersIcon,
+	ClipboardClock as PendingIcon,
+	Users as UsersIcon,
 	Code as FileCodeIcon,
 	Download as DownloadIcon,
-	Schedule as ClockIcon,
-	Storage as DatabaseIcon
-} from "@mui/icons-material";
+	Clock as ClockIcon,
+	Database as DatabaseIcon
+} from "lucide-react";
 import { getCookie } from "@utils/cookies";
 import {
 	Dialog,
@@ -38,60 +36,21 @@ import { Badge } from "@components/ui/badge";
 import { Label } from "@components/ui/label";
 import { Textarea } from "@components/ui/textarea";
 import { toast } from "@hooks/use-toast";
+import type { InternalStats } from "@types";
 
-interface InternalStats {
-	users: {
-		monthly: {
-			count: number;
-			timeframe: string;
-		};
+/** Response shape of POST /api/admin/sync-themes. */
+interface SyncResult {
+	status: number;
+	message: string;
+	approved: {
 		total: number;
+		updated?: number;
 	};
-	themes: {
+	submissions: {
+		updated: number;
 		total: number;
-		totalDownloads: number;
-		pendingSubmissions: number;
-		topAuthor: {
-			discord_snowflake: string;
-			themeCount: number;
-		};
-		mostLiked: string;
+		description: string;
 	};
-	dbst: {
-		collections: number;
-		objects: number;
-		dataSize: number;
-		storageSize: number;
-		indexes: number;
-		size: number;
-	};
-	sst: {
-		cn: any;
-		nw: any;
-		op: any;
-		up: number;
-	};
-}
-
-interface Theme {
-	_id: string;
-	title: string;
-	description: string;
-	file: string;
-	fileUrl: string;
-	contributors: string[];
-	sourceLink: string;
-	validatedUsers: {
-		[key: string]: {
-			id: string;
-			username: string;
-			avatar: string;
-		};
-	};
-	state: "pending" | "approved" | "rejected";
-	themeContent: string;
-	submittedAt: Date;
-	submittedBy: string;
 }
 
 export default function AdminDashboard() {
@@ -99,28 +58,32 @@ export default function AdminDashboard() {
 	const { isAuthenticated, authorizedUser, isLoading } = useWebContext();
 	const [stats, setStats] = useState<InternalStats | null>(null);
 	const [loading, setLoading] = useState(true);
-	const [submissions, setSubmissions] = useState([]);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [searchResults, setSearchResults] = useState(null);
 	const [isSearching, setIsSearching] = useState(false);
 	const [searchError, setSearchError] = useState(null);
+	const [suggestions, setSuggestions] = useState<{ id: string; username: string | null; global_name: string | null; avatar: string | null }[]>([]);
+	const [showSuggestions, setShowSuggestions] = useState(false);
 	const [announcementDialogOpen, setAnnouncementDialogOpen] = useState(false);
 	const [announcementTitle, setAnnouncementTitle] = useState("");
 	const [announcementMessage, setAnnouncementMessage] = useState("");
 	const [isSubmittingAnnouncement, setIsSubmittingAnnouncement] = useState(false);
 	const [isSyncingThemes, setIsSyncingThemes] = useState(false);
-	const [syncResult, setSyncResult] = useState<any>(null);
+	const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
 
 	useEffect(() => {
-		if (!isLoading && (!isAuthenticated || !authorizedUser?.admin)) {
+		if (isLoading) return;
+
+		if (!isAuthenticated || !authorizedUser?.admin) {
 			router.push("/");
 			return;
 		}
 
+		const controller = new AbortController();
 		const fetchStats = async () => {
 			try {
 				const token = getCookie("_dtoken");
-				if (!token) {
+				if (!isAuthenticated) {
 					router.push("/");
 					return;
 				}
@@ -129,27 +92,34 @@ export default function AdminDashboard() {
 					headers: {
 						"Content-Type": "application/json",
 						Authorization: `Bearer ${token}`
-					}
+					},
+					signal: controller.signal
 				});
 
+				if (controller.signal.aborted) return;
 				if (response.ok) {
 					const data = await response.json();
+					if (controller.signal.aborted) return;
 					setStats(data);
 				} else {
 					router.push("/");
 				}
 			} catch (error) {
+				if (controller.signal.aborted) return;
 				console.error("Error fetching admin data:", error);
 				router.push("/");
 			} finally {
-				setLoading(false);
+				if (!controller.signal.aborted) {
+					setLoading(false);
+				}
 			}
 		};
 
 		fetchStats();
-	}, [isAuthenticated, authorizedUser, isLoading, router]);
+		return () => controller.abort();
+	}, [isAuthenticated, authorizedUser?.id, authorizedUser?.admin, isLoading, router]);
 
-	if (isLoading || loading) {
+	if (isLoading || loading || !stats) {
 		return (
 			<div className="min-h-screen flex items-center justify-center">
 				<Loader2 className="w-8 h-8 animate-spin" />
@@ -161,16 +131,18 @@ export default function AdminDashboard() {
 		return null;
 	}
 
-	const handleUserSearch = async () => {
-		if (!searchQuery.trim()) return;
+	const handleUserSearch = async (value?: string) => {
+		const term = (value ?? searchQuery).trim();
+		if (!term) return;
 
+		setShowSuggestions(false);
 		setIsSearching(true);
 		setSearchError(null);
 
 		try {
 			const token = getCookie("_dtoken");
 			const response = await fetch(
-				`/api/users?userString=${encodeURIComponent(searchQuery)}`,
+				`/api/users?userString=${encodeURIComponent(term)}`,
 				{
 					headers: {
 						Authorization: `Bearer ${token}`
@@ -191,6 +163,35 @@ export default function AdminDashboard() {
 			setIsSearching(false);
 		}
 	};
+
+	useEffect(() => {
+		const term = searchQuery.trim();
+		if (term.length < 2) {
+			setSuggestions([]);
+			return;
+		}
+
+		const controller = new AbortController();
+		const timeout = setTimeout(async () => {
+			try {
+				const token = getCookie("_dtoken");
+				const response = await fetch(`/api/users/search?q=${encodeURIComponent(term)}`, {
+					headers: { Authorization: `Bearer ${token}` },
+					signal: controller.signal
+				});
+				if (!response.ok) return;
+				const data = await response.json();
+				setSuggestions(Array.isArray(data.users) ? data.users : []);
+			} catch {
+				// ignore aborted/failed suggestion lookups
+			}
+		}, 250);
+
+		return () => {
+			clearTimeout(timeout);
+			controller.abort();
+		};
+	}, [searchQuery]);
 
 	const handleSendAnnouncement = async () => {
 		if (!announcementTitle.trim() || !announcementMessage.trim()) {
@@ -415,20 +416,63 @@ export default function AdminDashboard() {
 								</DialogHeader>
 
 								<div className="flex flex-col sm:flex-row gap-2">
-									<Input
-										placeholder="Search by ID or username..."
-										value={searchQuery}
-										onChange={e =>
-											setSearchQuery(e.target.value)
-										}
-										onKeyDown={e =>
-											e.key === "Enter" &&
-											handleUserSearch()
-										}
-										className="flex-1"
-									/>
+									<div className="relative flex-1">
+										<Input
+											placeholder="Search by ID or username..."
+											value={searchQuery}
+											onChange={e => {
+												setSearchQuery(e.target.value);
+												setShowSuggestions(true);
+											}}
+											onFocus={() => setShowSuggestions(true)}
+											onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+											onKeyDown={e =>
+												e.key === "Enter" &&
+												handleUserSearch()
+											}
+											className="w-full"
+										/>
+										{showSuggestions && suggestions.length > 0 && (
+											<div className="absolute z-50 mt-1 w-full rounded-lg border border-border bg-popover shadow-lg overflow-hidden">
+												{suggestions.map(s => (
+													<button
+														key={s.id}
+														type="button"
+														onMouseDown={e => e.preventDefault()}
+														onClick={() => {
+															setSearchQuery(s.id);
+															handleUserSearch(s.id);
+														}}
+														className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-accent transition-colors"
+													>
+														<Avatar className="h-8 w-8">
+															<AvatarImage
+																src={
+																	s.avatar
+																		? `https://cdn.discordapp.com/avatars/${s.id}/${s.avatar}.png`
+																		: undefined
+																}
+																alt={s.global_name ?? s.id}
+															/>
+															<AvatarFallback>
+																{(s.global_name ?? s.username ?? s.id).charAt(0).toUpperCase()}
+															</AvatarFallback>
+														</Avatar>
+														<div className="min-w-0">
+															<div className="truncate text-sm font-medium">
+																{s.global_name ?? s.username ?? "Unknown"}
+															</div>
+															<div className="truncate text-xs text-muted-foreground">
+																{s.id}
+															</div>
+														</div>
+													</button>
+												))}
+											</div>
+										)}
+									</div>
 									<Button
-										onClick={handleUserSearch}
+										onClick={() => handleUserSearch()}
 										disabled={isSearching}
 										size="sm"
 									>

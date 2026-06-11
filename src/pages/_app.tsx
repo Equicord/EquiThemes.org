@@ -7,26 +7,31 @@ import { Toaster } from "@components/ui/toaster";
 import { AccountBar } from "@components/account-bar";
 import { BanBanner } from "@components/ban-banner";
 import Head from "next/head";
+import Link from "next/link";
 import { Analytics } from "@vercel/analytics/react";
 import { SearchProvider, useSearch } from "@context/search";
 import { SearchBar } from "@components/search-bar";
 import ErrorBoundary from "@components/error-boundary";
+import { useRouter } from "next/router";
 
 function App({ Component, pageProps }) {
+    const router = useRouter();
+
     return (
-        <ErrorBoundary>
+        <ErrorBoundary routeKey={router.pathname}>
             <AuthProvider>
                 <Head>
                     <meta httpEquiv="content-language" content="en" />
-                    <meta name="viewport" content="initial-scale=1, width=device-width" />
+                    <meta name="viewport" content="initial-scale=1, width=device-width" key="viewport" />
                     <meta
                         name="keywords"
                         content="discord, theme, custom, discord themes, Vencord, equicord"
+                        key="keywords"
                     />
-                    <meta name="theme-color" content="#1a1b26" />
-                    <meta name="application-name" content="Theme Library" />
-                    <meta property="og:type" content="website" />
-                    <meta property="og:url" content="https://themes.equicord.org/" />
+                    <meta name="theme-color" content="#1a1b26" key="theme-color" />
+                    <meta name="application-name" content="Theme Library" key="application-name" />
+                    <meta property="og:type" content="website" key="og-type" />
+                    <meta property="og:url" content="https://themes.equicord.org/" key="og-url" />
                     <title>Theme Library</title>
                     <link rel="icon" href="/favicon.ico" />
                     <link rel="apple-touch-icon" href="/favicon.ico" />
@@ -92,10 +97,10 @@ function HeaderWithSearchInner() {
     return (
         <div>
             <div className="flex h-16 items-center gap-4">
-                <a href="/" className="flex shrink-0 items-center space-x-3 hover:opacity-80 transition-opacity">
+                <Link href="/" className="flex shrink-0 items-center space-x-3 hover:opacity-80 transition-opacity">
                     <Image src={blob} alt="Theme Library" width={32} height={32} className="rounded-lg" />
                     <span className="text-xl font-semibold tracking-tight">Theme Library</span>
-                </a>
+                </Link>
 
                 <div className="flex-1 min-w-0">
                     <SearchBar value={searchQuery} onSearch={setSearchQuery} />

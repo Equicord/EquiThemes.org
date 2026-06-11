@@ -1,8 +1,8 @@
-import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { Dispatch, ReactNode, SetStateAction, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { ThemeCard } from "@components/theme/card";
-import { ArrowUp, Ban, Book, Download, Flag, Heart, SearchX, Shield, Calendar, Clock, TrendingUp, Star, Users, Award, Zap, Trophy, Eye, ExternalLink, Share2, Copy, Lock } from "lucide-react";
-import { type Author, type Theme } from "@types";
+import { ArrowUp, Ban, Book, Download, Flag, Heart, SearchX, Shield, Calendar, Clock, TrendingUp, Star, Users, Award, Zap, Trophy, Eye, ExternalLink, Share2, Copy, Lock, type LucideIcon } from "lucide-react";
+import { type Author, type LikesData, type Theme, type ThemesResponse, type UserActivity } from "@types";
 import { Button } from "@components/ui/button";
 import { useWebContext } from "@context/auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
@@ -21,24 +21,276 @@ import { Separator } from "@components/ui/separator";
 import Head from "next/head";
 import { SERVER } from "@constants";
 
-interface ThemesResponse {
-    themes: Theme[];
-    user: {
-        id: string;
-        global_name: string;
-        preferredColor: string;
-        avatar: string;
-        admin?: boolean;
-        joinedAt?: string;
-        lastActive?: string;
-    };
-}
-
-interface UserActivity {
-    popularThemes: Theme[];
-}
-
 const THEMES_PER_PAGE = 6;
+
+type AuthorizedUser = ReturnType<typeof useWebContext>["authorizedUser"];
+
+const UserStats = ({ userActivity }: { userActivity: UserActivity | null }) => (
+    <div className="space-y-6 w-full mt-6">
+        {userActivity && (
+            <div className="space-y-4">
+                {userActivity.popularThemes.length > 0 && (
+                    <>
+                        <Separator />
+                        <div className="space-y-3">
+                            <h3 className="text-lg font-semibold flex items-center gap-2">
+                                <Trophy className="h-5 w-5 text-muted-foreground" />
+                                Popular Themes
+                            </h3>
+                            <div className="space-y-2">
+                                {userActivity.popularThemes.map((theme, index) => (
+                                    <div key={theme.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <Badge variant="secondary" className="w-6 h-6 p-0 flex items-center justify-center text-xs">
+                                                {index + 1}
+                                            </Badge>
+                                            <span className="text-sm font-medium truncate max-w-32">{theme.name}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                            <Download className="h-3 w-3" />
+                                            {(theme.downloads || 0).toLocaleString()}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </>
+                )}
+            </div>
+        )}
+    </div>
+);
+
+interface UserProfileProps {
+    userThemes: ThemesResponse;
+    user?: string | string[];
+    authorizedUser: AuthorizedUser;
+    invalid: boolean;
+    isLoading: boolean;
+    authorName: string;
+    primarySrc: string;
+    fallbackSrc: string;
+    userActivity: UserActivity | null;
+    copyProfileLink: () => void;
+    handleDelete: () => Promise<void>;
+    showBanModal: boolean;
+    setShowBanModal: Dispatch<SetStateAction<boolean>>;
+    banReason: string;
+    setBanReason: Dispatch<SetStateAction<string>>;
+    isBanning: boolean;
+    handleBanUser: () => Promise<void>;
+}
+
+const UserProfile = ({ userThemes, user, authorizedUser, invalid, isLoading, authorName, primarySrc, fallbackSrc, userActivity, copyProfileLink, handleDelete, showBanModal, setShowBanModal, banReason, setBanReason, isBanning, handleBanUser }: UserProfileProps) => (
+    <div className="relative">
+        <div className="w-full h-40 rounded-t-lg relative overflow-hidden" style={{ backgroundColor: userThemes.user?.preferredColor || "#5865F2" }}>
+            <div className="absolute inset-0 bg-gradient-to-br from-transparent to-black/20" />
+            <div className="absolute top-4 right-4 flex items-center gap-2">
+                <Button disabled={invalid || isLoading} size="sm" variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-white/20" onClick={copyProfileLink}>
+                    <Share2 className="h-4 w-4 mr-1" />
+                    Share
+                </Button>
+                {user !== "@me" && user !== authorizedUser?.id && (
+                    <Button size="sm" variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-white/20" onClick={() => window.open(`https://discord.com/users/${userThemes.user.id}`, "_blank")}>
+                        <ExternalLink className="h-4 w-4 mr-1" />
+                        Discord
+                    </Button>
+                )}
+            </div>
+        </div>
+        <div className="p-6 -mt-20">
+            <div className="flex flex-col items-center">
+                <div className="relative">
+                    <ImageWithFallback src={primarySrc} fallbackSrc={fallbackSrc} height={128} width={128} className="w-32 h-32 rounded-full ring-4 ring-background shadow-xl" alt="Avatar" unoptimized draggable={false} priority />
+                </div>
+
+                <div className="flex flex-col items-center gap-2 mt-6">
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-2xl font-bold">{userThemes.user.global_name ? userThemes.user.global_name : userThemes.themes.length ? authorName : "Unknown User"}</h1>
+                        {userThemes.user.admin && (
+                            <Badge className="fill-current select-none bg-yellow-500/20 text-yellow-600 hover:bg-yellow-500/30">
+                                <Shield className="w-3 h-3 mr-1" />
+                                Admin
+                            </Badge>
+                        )}
+                    </div>
+                </div>
+
+                {invalid ? (
+                    <div className="text-center mt-4">
+                        <p className="text-sm text-muted-foreground">User not found or was deleted</p>
+                    </div>
+                ) : (
+                    <>
+                        <UserStats userActivity={userActivity} />
+
+                        {authorizedUser?.admin && (
+                            <div className="w-full mt-6 space-y-4">
+                                {userThemes.user.admin && (
+                                    <Alert className="border-yellow-600/20 bg-yellow-500/10">
+                                        <AlertTitle className="text-md font-semibold text-yellow-600">You cannot moderate this user</AlertTitle>
+                                        <AlertDescription className="text-yellow-600/90 text-sm">This user has administrative privileges and cannot be moderated.</AlertDescription>
+                                    </Alert>
+                                )}
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Button variant="outline" disabled className="flex items-center gap-2">
+                                        <Flag className="w-4 h-4" />
+                                        View Reports
+                                    </Button>
+
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="destructive" disabled={userThemes.user.admin || invalid || isLoading} className="flex items-center gap-2">
+                                                <Ban className="w-4 h-4" />
+                                                Delete User
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This action cannot be undone. This will permanently delete the account and remove the user's data <b>permanently</b> until they sign up again.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={handleDelete} className="hover:bg-destructive">
+                                                    Continue
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-4">
+                                    <Dialog open={showBanModal} onOpenChange={setShowBanModal}>
+                                        <DialogTrigger asChild>
+                                            <Button variant="secondary" disabled={userThemes.user.admin || invalid || isLoading} className="flex items-center gap-2">
+                                                <Lock className="w-4 h-4" />
+                                                Ban from Submissions
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                            <DialogHeader>
+                                                <DialogTitle>Ban from Submissions</DialogTitle>
+                                            </DialogHeader>
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="ban-reason">Reason for ban</Label>
+                                                    <textarea
+                                                        id="ban-reason"
+                                                        value={banReason}
+                                                        onChange={(e) => setBanReason(e.target.value)}
+                                                        placeholder="Explain why this user is being banned from submissions..."
+                                                        className="w-full h-24 p-2 border border-input rounded-lg bg-background text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                                                    />
+                                                </div>
+                                                <div className="flex justify-end gap-2 pt-4">
+                                                    <Button variant="outline" onClick={() => setShowBanModal(false)} disabled={isBanning}>
+                                                        Cancel
+                                                    </Button>
+                                                    <Button
+                                                        variant="destructive"
+                                                        onClick={handleBanUser}
+                                                        disabled={isBanning || !banReason.trim()}
+                                                    >
+                                                        {isBanning ? "Banning..." : "Confirm Ban"}
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </DialogContent>
+                                    </Dialog>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+        </div>
+    </div>
+);
+
+const LoadingSkeleton = () => (
+    <div className="space-y-4">
+        <Skeleton className="h-40 w-full" />
+        <div className="flex justify-center -mt-20">
+            <Skeleton className="h-32 w-32 rounded-full" />
+        </div>
+        <div className="space-y-2 text-center pt-4">
+            <Skeleton className="h-8 w-48 mx-auto" />
+            <Skeleton className="h-4 w-32 mx-auto" />
+            <Skeleton className="h-6 w-24 mx-auto" />
+        </div>
+        <div className="grid grid-cols-2 gap-4 mt-6">
+            {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-20" />
+            ))}
+        </div>
+        <div className="space-y-3 mt-6">
+            <Skeleton className="h-6 w-32" />
+            <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                ))}
+            </div>
+        </div>
+    </div>
+);
+
+interface ThemesListProps {
+    themes: Theme[];
+    displayCount: number;
+    likedThemes: LikesData | null;
+    disableDownloads: boolean;
+    onLoadMore: () => void;
+    showScrollTop: boolean;
+    scrollToTop: () => void;
+}
+
+const ThemesList = ({ themes, displayCount, likedThemes, disableDownloads, onLoadMore, showScrollTop, scrollToTop }: ThemesListProps) => {
+    const hasMore = displayCount < themes.length;
+
+    return (
+        <div className="space-y-6">
+            <div className="grid gap-4">
+                {themes.slice(0, displayCount).map((theme: Theme) => (
+                    <div key={theme.id} className="transform transition-all duration-200 hover:scale-[1.02]">
+                        <ThemeCard theme={theme} likedThemes={likedThemes} disableDownloads={disableDownloads} />
+                    </div>
+                ))}
+            </div>
+
+            <div className="flex flex-col items-center gap-4 mt-8">
+                {hasMore && (
+                    <Button variant="outline" onClick={onLoadMore} className="w-full max-w-xs hover:bg-primary/10 transition-colors">
+                        Load More Themes
+                    </Button>
+                )}
+                {!hasMore && themes.length > THEMES_PER_PAGE && (
+                    <div className="text-center py-4">
+                        <p className="text-sm text-muted-foreground">🎉 You've reached the end!</p>
+                        <p className="text-xs text-muted-foreground mt-1">Found {themes.length} themes in total</p>
+                    </div>
+                )}
+            </div>
+
+            {showScrollTop && (
+                <Button variant="outline" size="icon" className="fixed bottom-8 right-8 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 z-50" onClick={scrollToTop}>
+                    <ArrowUp className="h-4 w-4" />
+                </Button>
+            )}
+        </div>
+    );
+};
+
+const Layout = ({ children }: { children: ReactNode }) => (
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 rounded-lg">
+        <main className="container mx-auto px-4 py-8">
+            <div className="flex flex-col-reverse lg:flex-row gap-8 min-h-[calc(100vh-5rem)]">{children}</div>
+        </main>
+    </div>
+);
 
 export default function User() {
     const router = useRouter();
@@ -49,16 +301,13 @@ export default function User() {
     });
     const [invalid, setInvalid] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [likedThemes, setLikedThemes] = useState<Theme[]>([]);
-    const [userLikedThemes, setUserLikedThemes] = useState<Theme[]>([]);
+    const [likedThemes, setLikedThemes] = useState<LikesData | null>(null);
     const [displayCount, setDisplayCount] = useState(THEMES_PER_PAGE);
-    const [hasMore, setHasMore] = useState(true);
     const [showScrollTop, setShowScrollTop] = useState(false);
-    const [userActivity, setUserActivity] = useState<UserActivity | null>(null);
-    const [shareTooltip, setShareTooltip] = useState(false);
     const [showBanModal, setShowBanModal] = useState(false);
     const [banReason, setBanReason] = useState("");
     const [isBanning, setIsBanning] = useState(false);
+    const [activeTab, setActiveTab] = useState("authored");
     const { authorizedUser, isAuthenticated, isLoading, themes } = useWebContext();
 
     const userToken = useMemo(() => {
@@ -68,8 +317,10 @@ export default function User() {
         return parts.length === 2 ? parts.pop()?.split(";").shift() : undefined;
     }, []);
 
-    const fetchThemes = useCallback(async () => {
+    const fetchThemes = useCallback(async (signal?: AbortSignal) => {
         if (!user) return;
+        setLoading(true);
+        setInvalid(false);
         try {
             const headers: Record<string, string> = { "Content-Type": "application/json" };
             if (userToken) {
@@ -79,76 +330,89 @@ export default function User() {
             const response = await fetch(`/api/user/themes`, {
                 method: "POST",
                 headers,
-                body: JSON.stringify({ userId: user })
+                body: JSON.stringify({ userId: user }),
+                signal
             });
 
             const data = await response.json();
+            if (signal?.aborted) return;
             if (response.status === 200) {
                 setUserThemes(data);
             } else {
-                setInvalid(response.status === 404);
+                setInvalid(true);
             }
         } catch (error) {
+            if (signal?.aborted) return;
             console.error("Error fetching themes:", error);
             setInvalid(true);
         } finally {
-            setLoading(false);
+            if (!signal?.aborted) {
+                setLoading(false);
+            }
         }
     }, [user, userToken]);
 
-    const fetchLikedThemes = useCallback(async () => {
-        if (!userToken || !(user === "@me" || user === authorizedUser?.id) || loading || isLoading) return;
-
-        try {
-            const response = await fetch("/api/likes/get", {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${userToken}`
-                }
-            });
-            const data = await response.json();
-
-            const likedThemeIds = data.likes.filter((like: { themeId: number; hasLiked: boolean }) => like.hasLiked).map((like: { themeId: number }) => like.themeId);
-
-            setUserLikedThemes(themes.filter((theme: Theme) => likedThemeIds.includes(theme.id)));
-            setLikedThemes(data);
-        } catch (error) {
-            console.error("Error fetching liked themes:", error);
-        }
-    }, [userToken, user, authorizedUser, loading, themes, isLoading]);
+    const userLikedThemes = useMemo(() => {
+        const likes = likedThemes?.likes;
+        if (!Array.isArray(likes)) return [];
+        if (!Array.isArray(themes)) return [];
+        const likedThemeIds = likes.filter((like) => like.hasLiked).map((like) => String(like.themeId));
+        return themes.filter((theme: Theme) => likedThemeIds.includes(String(theme.id)));
+    }, [likedThemes, themes]);
 
     useEffect(() => {
         if (!isAuthenticated && !isLoading && user === "@me") {
             router.push("/auth/login");
-        } else {
-            fetchLikedThemes();
         }
-    }, [isLoading, fetchLikedThemes, isAuthenticated, user, router]);
+    }, [isLoading, isAuthenticated, user, router]);
 
     useEffect(() => {
-        fetchThemes();
+        if (isLoading || !userToken || !(user === "@me" || user === authorizedUser?.id)) return;
+
+        const controller = new AbortController();
+        (async () => {
+            try {
+                const response = await fetch("/api/likes/get", {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${userToken}`
+                    },
+                    signal: controller.signal
+                });
+                const data = await response.json();
+                if (controller.signal.aborted) return;
+                setLikedThemes(data);
+            } catch (error) {
+                if (controller.signal.aborted) return;
+                console.error("Error fetching liked themes:", error);
+            }
+        })();
+
+        return () => controller.abort();
+    }, [userToken, user, authorizedUser?.id, isLoading]);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        fetchThemes(controller.signal);
         setDisplayCount(THEMES_PER_PAGE);
-        setHasMore(true);
-        setLoading(false);
-    }, [user, userToken, fetchThemes]);
-
-    const debounce = (func: Function, wait: number) => {
-        let timeout: any;
-        return (...args: any[]) => {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => func.apply(null, args), wait);
-        };
-    };
+        return () => controller.abort();
+    }, [fetchThemes]);
 
     useEffect(() => {
-        const handleScroll = debounce(() => {
-            const scrolled = window.scrollY;
-            setShowScrollTop(scrolled > 300);
-        }, 100);
+        let timeout: ReturnType<typeof setTimeout>;
+        const handleScroll = () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                setShowScrollTop(window.scrollY > 300);
+            }, 100);
+        };
 
         window.addEventListener("scroll", handleScroll);
-        return () => window.removeEventListener("scroll", handleScroll);
+        return () => {
+            clearTimeout(timeout);
+            window.removeEventListener("scroll", handleScroll);
+        };
     }, []);
 
     const handleDelete = async () => {
@@ -176,10 +440,14 @@ export default function User() {
         });
         window.location.reload();
     };
+
     const loadMore = () => {
-        const newCount = displayCount + THEMES_PER_PAGE;
-        setDisplayCount(newCount);
-        setHasMore(newCount < themes.length);
+        setDisplayCount((count) => count + THEMES_PER_PAGE);
+    };
+
+    const handleTabChange = (tab: string) => {
+        setActiveTab(tab);
+        setDisplayCount(THEMES_PER_PAGE);
     };
 
     const scrollToTop = () => {
@@ -189,15 +457,13 @@ export default function User() {
     const copyProfileLink = () => {
         const url = `${window.location.origin}/users/${user}`;
         navigator.clipboard.writeText(url);
-        setShareTooltip(true);
         toast({
             title: "Profile Link Copied",
             description: "The profile link has been copied to your clipboard."
         });
-        setTimeout(() => setShareTooltip(false), 2000);
     };
 
-    const generateUserActivity = useCallback(() => {
+    const userActivity = useMemo<UserActivity | null>(() => {
         if (!userThemes.themes.length) return null;
         const popularThemes = [...userThemes.themes].sort((a, b) => (b.downloads || 0) - (a.downloads || 0)).slice(0, 3);
 
@@ -205,13 +471,6 @@ export default function User() {
             popularThemes
         };
     }, [userThemes]);
-
-    useEffect(() => {
-        if (invalid || isLoading || !userThemes || !userThemes.themes) return;
-        if (userThemes.themes.length > 0) {
-            setUserActivity(generateUserActivity());
-        }
-    }, [userThemes, invalid, isLoading, generateUserActivity]);
 
     const handleBanUser = async () => {
         if (!userThemes.user.id || !banReason.trim()) {
@@ -264,42 +523,6 @@ export default function User() {
         }
     };
 
-    const UserStats = () => (
-        <div className="space-y-6 w-full mt-6">
-            {userActivity && (
-                <div className="space-y-4">
-                    {userActivity.popularThemes.length > 0 && (
-                        <>
-                            <Separator />
-                            <div className="space-y-3">
-                                <h3 className="text-lg font-semibold flex items-center gap-2">
-                                    <Trophy className="h-5 w-5 text-muted-foreground" />
-                                    Popular Themes
-                                </h3>
-                                <div className="space-y-2">
-                                    {userActivity.popularThemes.map((theme, index) => (
-                                        <div key={theme.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <Badge variant="secondary" className="w-6 h-6 p-0 flex items-center justify-center text-xs">
-                                                    {index + 1}
-                                                </Badge>
-                                                <span className="text-sm font-medium truncate max-w-32">{theme.name}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                <Download className="h-3 w-3" />
-                                                {(theme.downloads || 0).toLocaleString()}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </>
-                    )}
-                </div>
-            )}
-        </div>
-    );
-
     function getAuthorDiscordName(author: Author | Author[], userId?: string): string {
         if (isLoading) return "Loading...";
         if (!userId) return "Unknown User";
@@ -315,201 +538,35 @@ export default function User() {
 
     const primarySrc = userThemes.user?.avatar ? `https://cdn.discordapp.com/avatars/${userThemes.user.id}/${userThemes.user.avatar}.png` : `https://cdn.discordapp.com/embed/avatars/${Math.floor(Number(userThemes.user.id) / Math.pow(2, 22)) % 6}.png`;
     const fallbackSrc = `https://cdn.discordapp.com/embed/avatars/${Math.floor(Number(userThemes.user.id) / Math.pow(2, 22)) % 6}.png`;
-    const UserProfile = () => (
-        <div className="relative">
-            <div className="w-full h-40 rounded-t-lg relative overflow-hidden" style={{ backgroundColor: userThemes.user?.preferredColor || "#5865F2" }}>
-                <div className="absolute inset-0 bg-gradient-to-br from-transparent to-black/20" />
-                <div className="absolute top-4 right-4 flex items-center gap-2">
-                    <Button disabled={invalid || isLoading} size="sm" variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-white/20" onClick={copyProfileLink}>
-                        <Share2 className="h-4 w-4 mr-1" />
-                        Share
-                    </Button>
-                    {user !== "@me" && user !== authorizedUser?.id && (
-                        <Button size="sm" variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-white/20" onClick={() => window.open(`https://discord.com/users/${userThemes.user.id}`, "_blank")}>
-                            <ExternalLink className="h-4 w-4 mr-1" />
-                            Discord
-                        </Button>
-                    )}
-                </div>
-            </div>
-            <div className="p-6 -mt-20">
-                <div className="flex flex-col items-center">
-                    <div className="relative">
-                        <ImageWithFallback src={primarySrc} fallbackSrc={fallbackSrc} height={128} width={128} className="w-32 h-32 rounded-full ring-4 ring-background shadow-xl" alt="Avatar" unoptimized draggable={false} priority />
-                    </div>
 
-                    <div className="flex flex-col items-center gap-2 mt-6">
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-2xl font-bold">{userThemes.user.global_name ? userThemes.user.global_name : userThemes.themes.length ? authorName : "Unknown User"}</h1>
-                            {userThemes.user.admin && (
-                                <Badge className="fill-current select-none bg-yellow-500/20 text-yellow-600 hover:bg-yellow-500/30">
-                                    <Shield className="w-3 h-3 mr-1" />
-                                    Admin
-                                </Badge>
-                            )}
-                        </div>
-                    </div>
+    const userProfileProps: UserProfileProps = {
+        userThemes,
+        user,
+        authorizedUser,
+        invalid,
+        isLoading,
+        authorName,
+        primarySrc,
+        fallbackSrc,
+        userActivity,
+        copyProfileLink,
+        handleDelete,
+        showBanModal,
+        setShowBanModal,
+        banReason,
+        setBanReason,
+        isBanning,
+        handleBanUser
+    };
 
-                    {invalid ? (
-                        <div className="text-center mt-4">
-                            <p className="text-sm text-muted-foreground">User not found or was deleted</p>
-                        </div>
-                    ) : (
-                        <>
-                            <UserStats />
+    const themesListProps = {
+        displayCount,
+        likedThemes,
+        onLoadMore: loadMore,
+        showScrollTop,
+        scrollToTop
+    };
 
-                            {authorizedUser?.admin && (
-                                <div className="w-full mt-6 space-y-4">
-                                    {userThemes.user.admin && (
-                                        <Alert className="border-yellow-600/20 bg-yellow-500/10">
-                                            <AlertTitle className="text-md font-semibold text-yellow-600">You cannot moderate this user</AlertTitle>
-                                            <AlertDescription className="text-yellow-600/90 text-sm">This user has administrative privileges and cannot be moderated.</AlertDescription>
-                                        </Alert>
-                                    )}
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <Button variant="outline" disabled className="flex items-center gap-2">
-                                            <Flag className="w-4 h-4" />
-                                            View Reports
-                                        </Button>
-
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="destructive" disabled={userThemes.user.admin || invalid || isLoading} className="flex items-center gap-2">
-                                                    <Ban className="w-4 h-4" />
-                                                    Delete User
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        This action cannot be undone. This will permanently delete the account and remove the user's data <b>permanently</b> until they sign up again.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={handleDelete} className="hover:bg-destructive">
-                                                        Continue
-                                                    </AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 gap-4">
-                                        <Dialog open={showBanModal} onOpenChange={setShowBanModal}>
-                                            <DialogTrigger asChild>
-                                                <Button variant="secondary" disabled={userThemes.user.admin || invalid || isLoading} className="flex items-center gap-2">
-                                                    <Lock className="w-4 h-4" />
-                                                    Ban from Submissions
-                                                </Button>
-                                            </DialogTrigger>
-                                            <DialogContent>
-                                                <DialogHeader>
-                                                    <DialogTitle>Ban from Submissions</DialogTitle>
-                                                </DialogHeader>
-                                                <div className="space-y-4">
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="ban-reason">Reason for ban</Label>
-                                                        <textarea
-                                                            id="ban-reason"
-                                                            value={banReason}
-                                                            onChange={(e) => setBanReason(e.target.value)}
-                                                            placeholder="Explain why this user is being banned from submissions..."
-                                                            className="w-full h-24 p-2 border border-input rounded-lg bg-background text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
-                                                        />
-                                                    </div>
-                                                    <div className="flex justify-end gap-2 pt-4">
-                                                        <Button variant="outline" onClick={() => setShowBanModal(false)} disabled={isBanning}>
-                                                            Cancel
-                                                        </Button>
-                                                        <Button 
-                                                            variant="destructive" 
-                                                            onClick={handleBanUser}
-                                                            disabled={isBanning || !banReason.trim()}
-                                                        >
-                                                            {isBanning ? "Banning..." : "Confirm Ban"}
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </DialogContent>
-                                        </Dialog>
-                                    </div>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-    const LoadingSkeleton = () => (
-        <div className="space-y-4">
-            <Skeleton className="h-40 w-full" />
-            <div className="flex justify-center -mt-20">
-                <Skeleton className="h-32 w-32 rounded-full" />
-            </div>
-            <div className="space-y-2 text-center pt-4">
-                <Skeleton className="h-8 w-48 mx-auto" />
-                <Skeleton className="h-4 w-32 mx-auto" />
-                <Skeleton className="h-6 w-24 mx-auto" />
-            </div>
-            <div className="grid grid-cols-2 gap-4 mt-6">
-                {[1, 2, 3, 4].map((i) => (
-                    <Skeleton key={i} className="h-20" />
-                ))}
-            </div>
-            <div className="space-y-3 mt-6">
-                <Skeleton className="h-6 w-32" />
-                <div className="space-y-2">
-                    {[1, 2, 3].map((i) => (
-                        <Skeleton key={i} className="h-12 w-full" />
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
-    const ThemesList = ({ themes }: { themes: Theme[] }) => (
-        <div className="space-y-6">
-            <div className="grid gap-4">
-                {themes.slice(0, displayCount).map((theme: Theme) => (
-                    <div key={theme.id} className="transform transition-all duration-200 hover:scale-[1.02]">
-                        <ThemeCard theme={theme} likedThemes={likedThemes} disableDownloads={activeTab === "authored"} />
-                    </div>
-                ))}
-            </div>
-
-            <div className="flex flex-col items-center gap-4 mt-8">
-                {hasMore && themes.length > displayCount && (
-                    <Button variant="outline" onClick={loadMore} className="w-full max-w-xs hover:bg-primary/10 transition-colors">
-                        Load More Themes
-                    </Button>
-                )}
-                {!hasMore && themes.length > THEMES_PER_PAGE && (
-                    <div className="text-center py-4">
-                        <p className="text-sm text-muted-foreground">🎉 You've reached the end!</p>
-                        <p className="text-xs text-muted-foreground mt-1">Found {themes.length} themes in total</p>
-                    </div>
-                )}
-            </div>
-
-            {showScrollTop && (
-                <Button variant="outline" size="icon" className="fixed bottom-8 right-8 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 z-50" onClick={scrollToTop}>
-                    <ArrowUp className="h-4 w-4" />
-                </Button>
-            )}
-        </div>
-    );
-    const Layout = ({ children }: { children: ReactNode }) => (
-        <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 rounded-lg">
-            <main className="container mx-auto px-4 py-8">
-                <div className="flex flex-col-reverse lg:flex-row gap-8 min-h-[calc(100vh-5rem)]">{children}</div>
-            </main>
-        </div>
-    );
-
-    const [activeTab, setActiveTab] = useState("authored");
     if (loading) {
         return (
             <Layout>
@@ -535,7 +592,6 @@ export default function User() {
         );
     }
     if (invalid) {
-        router.push("/");
         return (
             <Layout>
                 <div className="w-full lg:w-2/3">
@@ -572,7 +628,7 @@ export default function User() {
                 <div className="w-full lg:w-1/3">
                     <div className="sticky top-24">
                         <Card>
-                            <UserProfile />
+                            <UserProfile {...userProfileProps} />
                         </Card>
                     </div>
                 </div>
@@ -582,7 +638,7 @@ export default function User() {
     return (
         <>
             <Head>
-                <title>{userThemes.user.global_name || "User Profile"} - Discord Themes</title>
+                <title>{`${userThemes.user.global_name || "User Profile"} - Discord Themes`}</title>
                 <meta name="description" content={`Check out ${userThemes.user.global_name || "this user"}'s profile and their amazing Discord themes!`} />
                 <meta property="og:title" content={`${userThemes.user.global_name || "User Profile"} - Discord Themes`} />
                 <meta property="og:description" content={`Check out ${userThemes.user.global_name || "this user"}'s profile and their amazing Discord themes!`} />
@@ -595,7 +651,7 @@ export default function User() {
                 <div className="w-full lg:w-2/3">
                     <Card className="p-6 shadow-lg">
                         {user === "@me" || user === authorizedUser?.id ? (
-                            <Tabs value={activeTab} onValueChange={setActiveTab}>
+                            <Tabs value={activeTab} onValueChange={handleTabChange}>
                                 <TabsList className="grid w-full grid-cols-2 mb-6 bg-muted/50">
                                     <TabsTrigger value="authored" className="data-[state=active]:bg-background">
                                         <Book className="w-4 h-4 mr-2" />
@@ -608,7 +664,7 @@ export default function User() {
                                 </TabsList>
                                 <TabsContent value="authored" className="space-y-6">
                                     {userThemes.themes.length > 0 ? (
-                                        <ThemesList themes={userThemes.themes} />
+                                        <ThemesList themes={userThemes.themes} disableDownloads={activeTab === "authored"} {...themesListProps} />
                                     ) : (
                                         <EmptyState
                                             icon={Book}
@@ -625,7 +681,7 @@ export default function User() {
                                 </TabsContent>
                                 <TabsContent value="liked" className="space-y-6">
                                     {userLikedThemes.length > 0 ? (
-                                        <ThemesList themes={userLikedThemes.reverse()} />
+                                        <ThemesList themes={[...userLikedThemes].reverse()} disableDownloads={false} {...themesListProps} />
                                     ) : (
                                         <EmptyState
                                             icon={Heart}
@@ -658,7 +714,7 @@ export default function User() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <ThemesList themes={userThemes.themes} />
+                                        <ThemesList themes={userThemes.themes} disableDownloads={false} {...themesListProps} />
                                     </div>
                                 ) : (
                                     <EmptyState icon={Book} title="No themes available" description="This user hasn't created any themes yet" />
@@ -670,7 +726,7 @@ export default function User() {
                 <div className="w-full lg:w-1/3 h-fit">
                     <div className="sticky top-24">
                         <Card className="shadow-lg overflow-hidden">
-                            <UserProfile />
+                            <UserProfile {...userProfileProps} />
                         </Card>
                     </div>
                 </div>
@@ -679,7 +735,7 @@ export default function User() {
     );
 }
 
-const EmptyState = ({ icon: Icon, title, description, actionButton }: { icon: any; title: string; description: string; actionButton?: React.ReactNode }) => (
+const EmptyState = ({ icon: Icon, title, description, actionButton }: { icon: LucideIcon; title: string; description: string; actionButton?: React.ReactNode }) => (
     <div className="flex flex-col items-center justify-center py-16 px-4">
         <div className="p-4 rounded-full bg-muted/50 mb-4">
             <Icon className="w-12 h-12 text-muted-foreground" />

@@ -3,15 +3,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Textarea } from "@components/ui/textarea";
-import { useMemo, useState, useCallback } from "react";
-import { Code as CodeIcon, Label as LabelIcon, CheckCircle as CheckIcon, Refresh as RefreshIcon } from "@mui/icons-material";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { RefreshCw } from "lucide-react";
 import { cn } from "@lib/utils";
 import { ThemeCard } from "./card";
-import { Theme } from "@types";
+import { Theme, type ThemeUpdatePayload } from "@types";
 import { useToast } from "@hooks/use-toast";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
+import css from "react-syntax-highlighter/dist/esm/languages/prism/css";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Switch } from "@components/ui/switch";
+
+SyntaxHighlighter.registerLanguage("css", css);
 
 interface EditThemeModalProps {
     open: boolean;
@@ -19,12 +22,76 @@ interface EditThemeModalProps {
     onOpenChange: (open: boolean) => void;
     theme?: Theme;
     // eslint-disable-next-line no-unused-vars
-    onSave: (data: any) => Promise<void>;
+    onSave: (data: ThemeUpdatePayload) => Promise<void>;
 }
 
 interface FieldValidation {
     [key: string]: boolean;
 }
+
+const decodeBase64 = (value: string) => {
+    try {
+        return atob(value);
+    } catch {
+        return "";
+    }
+};
+
+interface FormFieldProps {
+    label: string;
+    value: string;
+    // eslint-disable-next-line no-unused-vars
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+    required?: boolean;
+    placeholder: string;
+    isTextarea?: boolean;
+    isValid: boolean;
+    hasChanged: boolean;
+}
+
+const FormField = ({ label, value, onChange, required = false, placeholder, isTextarea = false, isValid, hasChanged }: FormFieldProps) => {
+    return (
+        <div className="space-y-2">
+            <div className="flex items-center justify-between">
+                <label className="text-sm font-semibold text-foreground">
+                    {label}
+                    {required && <span className="text-red-500 ml-1">*</span>}
+                </label>
+                {hasChanged && <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded">Modified</span>}
+            </div>
+            {isTextarea ? (
+                <Textarea value={value} onChange={onChange} placeholder={placeholder} className={cn("min-h-[120px] font-mono text-sm", "border-muted focus:border-primary transition-colors", !isValid && required && "border-red-500")} required={required} />
+            ) : (
+                <Input value={value} onChange={onChange} placeholder={placeholder} className={cn("border-muted focus:border-primary transition-colors", !isValid && required && "border-red-500")} required={required} />
+            )}
+            {!isValid && required && <p className="text-xs text-red-500 font-medium">{label} is required</p>}
+        </div>
+    );
+};
+
+const ThemeCodeBlock = React.memo(function ThemeCodeBlock({ content }: { content: string }) {
+    return (
+        <div className="codeblock rounded-xl border border-border/30 bg-muted/10 p-4 relative overflow-hidden">
+            <SyntaxHighlighter
+                language="css"
+                style={vscDarkPlus}
+                customStyle={{
+                    maxHeight: 400,
+                    borderRadius: "0.75rem",
+                    fontSize: "0.875rem",
+                    background: "transparent",
+                    margin: 0,
+                    padding: "1rem",
+                    fontFamily: '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
+                }}
+                codeTagProps={{ style: { fontFamily: "inherit" } }}
+                wrapLongLines={true}
+            >
+                {content}
+            </SyntaxHighlighter>
+        </div>
+    );
+});
 
 export function EditThemeModal({ open, onOpenChange, theme, onSave }: EditThemeModalProps) {
     const { toast } = useToast();
@@ -42,8 +109,25 @@ export function EditThemeModal({ open, onOpenChange, theme, onSave }: EditThemeM
         content: ""
     });
 
+    useEffect(() => {
+        if (!open) return;
+        setFormData({
+            name: theme?.name || "",
+            description: theme?.description || "",
+            version: theme?.version || "",
+            sourceLink: theme?.source || "",
+            content: ""
+        });
+        setError(null);
+        setShowPreview(false);
+        setUseAsImport(false);
+        setIsLoading(false);
+        setIsFetchingContent(false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, theme?.id]);
+
     const decodedThemeContent = useMemo(() => {
-        return theme?.content ? Buffer.from(theme.content, "base64").toString() : "";
+        return theme?.content ? decodeBase64(theme.content) : "";
     }, [theme?.content]);
 
     const fieldValidation: FieldValidation = useMemo(
@@ -56,8 +140,8 @@ export function EditThemeModal({ open, onOpenChange, theme, onSave }: EditThemeM
     );
 
     const hasChanges = useMemo(() => {
-        return formData.name.trim() !== theme?.name?.trim() || formData.description.trim() !== theme?.description?.trim() || formData.version.trim() !== (theme?.version || "").trim() || formData.sourceLink.trim() !== (theme?.source || "").trim();
-    }, [formData, theme]);
+        return formData.name.trim() !== theme?.name?.trim() || formData.description.trim() !== theme?.description?.trim() || formData.version.trim() !== (theme?.version || "").trim() || formData.sourceLink.trim() !== (theme?.source || "").trim() || (formData.content !== "" && formData.content !== decodedThemeContent);
+    }, [formData, theme, decodedThemeContent]);
 
     const isValid = useMemo(() => {
         return Object.values(fieldValidation).every((v) => v === true);
@@ -91,7 +175,7 @@ export function EditThemeModal({ open, onOpenChange, theme, onSave }: EditThemeM
                 }
 
                 const { content: base64Content } = await response.json();
-                let content = Buffer.from(base64Content, "base64").toString("utf-8");
+                let content = decodeBase64(base64Content);
 
                 const headerMatch = content.match(/^((?:\/\*[\s\S]*?\*\/\s*)*)/);
                 const header = headerMatch ? headerMatch[1].trim() : "";
@@ -134,11 +218,12 @@ export function EditThemeModal({ open, onOpenChange, theme, onSave }: EditThemeM
         try {
             setIsLoading(true);
             setError(null);
-            const saveData: any = {
+            const saveData: ThemeUpdatePayload = {
                 name: formData.name,
                 description: formData.description,
                 version: formData.version,
                 sourceLink: formData.sourceLink,
+                tags: theme?.tags,
                 last_updated: new Date().toISOString()
             };
 
@@ -164,29 +249,6 @@ export function EditThemeModal({ open, onOpenChange, theme, onSave }: EditThemeM
         }
     };
 
-    const FormField = ({ label, field, required = false, placeholder, isTextarea = false }: { label: string; field: keyof typeof formData; required?: boolean; placeholder: string; isTextarea?: boolean }) => {
-        const isValid = fieldValidation[field];
-        const hasChanged = field === "sourceLink" ? formData.sourceLink.trim() !== (theme?.source || "").trim() : (formData[field] as string).trim() !== ((theme?.[field as keyof typeof theme] as string) || "").trim();
-
-        return (
-            <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                    <label className="text-sm font-semibold text-foreground">
-                        {label}
-                        {required && <span className="text-red-500 ml-1">*</span>}
-                    </label>
-                    {hasChanged && <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded">Modified</span>}
-                </div>
-                {isTextarea ? (
-                    <Textarea value={formData[field] as string} onChange={handleChange(field)} placeholder={placeholder} className={cn("min-h-[120px] font-mono text-sm", "border-muted focus:border-primary transition-colors", !isValid && required && "border-red-500")} required={required} />
-                ) : (
-                    <Input value={formData[field] as string} onChange={handleChange(field)} placeholder={placeholder} className={cn("border-muted focus:border-primary transition-colors", !isValid && required && "border-red-500")} required={required} />
-                )}
-                {!isValid && required && <p className="text-xs text-red-500 font-medium">{label} is required</p>}
-            </div>
-        );
-    };
-
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent 
@@ -199,14 +261,14 @@ export function EditThemeModal({ open, onOpenChange, theme, onSave }: EditThemeM
 
                 <div className={cn("grid gap-0 flex-1 overflow-y-auto", showPreview ? "lg:grid-cols-2" : "grid-cols-1")}>
                     <div className="space-y-6 px-6 pb-6" onClick={(e) => e.stopPropagation()}>
-                        <FormField label="Theme Name" field="name" required placeholder="My Awesome Theme" />
+                        <FormField label="Theme Name" value={formData.name} onChange={handleChange("name")} required placeholder="My Awesome Theme" isValid={fieldValidation.name} hasChanged={formData.name.trim() !== (theme?.name || "").trim()} />
 
-                        <FormField label="Description" field="description" required placeholder="A brief description of your theme..." isTextarea />
+                        <FormField label="Description" value={formData.description} onChange={handleChange("description")} required placeholder="A brief description of your theme..." isTextarea isValid={fieldValidation.description} hasChanged={formData.description.trim() !== (theme?.description || "").trim()} />
 
                         <div className="grid grid-cols-2 gap-4">
-                            <FormField label="Version" field="version" placeholder="1.0.0" />
+                            <FormField label="Version" value={formData.version} onChange={handleChange("version")} placeholder="1.0.0" isValid={true} hasChanged={formData.version.trim() !== (theme?.version || "").trim()} />
 
-                            <FormField label="Source Link" field="sourceLink" required placeholder="https://github.com/..." />
+                            <FormField label="Source Link" value={formData.sourceLink} onChange={handleChange("sourceLink")} required placeholder="https://github.com/..." isValid={fieldValidation.sourceLink} hasChanged={formData.sourceLink.trim() !== (theme?.source || "").trim()} />
                         </div>
 
                         <div className="space-y-3">
@@ -221,32 +283,14 @@ export function EditThemeModal({ open, onOpenChange, theme, onSave }: EditThemeM
                                         <Switch checked={useAsImport} onCheckedChange={setUseAsImport} disabled={!formData.content} />
                                     </div>
                                     <Button size="sm" variant="outline" onClick={() => fetchContentFromGitHub(formData.sourceLink)} disabled={!formData.sourceLink.trim() || isFetchingContent} className="text-xs">
-                                        <RefreshIcon className="h-3 w-3 mr-1" />
+                                        <RefreshCw className="h-3 w-3 mr-1" />
                                         {isFetchingContent ? "Fetching..." : "Fetch Content"}
                                     </Button>
                                 </div>
                             </div>
 
                             {formData.content || decodedThemeContent ? (
-                                <div className="codeblock rounded-xl border border-border/30 bg-muted/10 p-4 relative overflow-hidden">
-                                    <SyntaxHighlighter
-                                        language="css"
-                                        style={vscDarkPlus}
-                                        customStyle={{
-                                            maxHeight: 400,
-                                            borderRadius: "0.75rem",
-                                            fontSize: "0.875rem",
-                                            background: "transparent",
-                                            margin: 0,
-                                            padding: "1rem",
-                                            fontFamily: '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
-                                        }}
-                                        codeTagProps={{ style: { fontFamily: "inherit" } }}
-                                        wrapLongLines={true}
-                                    >
-                                        {formData.content || decodedThemeContent}
-                                    </SyntaxHighlighter>
-                                </div>
+                                <ThemeCodeBlock content={formData.content || decodedThemeContent} />
                             ) : (
                                 <div className={cn("min-h-[120px] w-full bg-muted/50 border border-muted rounded p-4 font-mono text-sm", "flex items-center justify-center text-muted-foreground")}>CSS content will appear here once fetched from GitHub</div>
                             )}
@@ -276,11 +320,10 @@ export function EditThemeModal({ open, onOpenChange, theme, onSave }: EditThemeM
                         </div>
                     </div>
 
-                    {showPreview && (
+                    {showPreview && theme && (
                         <div className="hidden lg:flex flex-col space-y-4 pt-0 lg:border-l lg:border-muted lg:pl-8 px-6 pb-6 overflow-hidden max-h-[calc(95vh-120px)]">
                             <h4 className="text-sm font-semibold">Preview</h4>
                             <div className="overflow-auto">
-                                {/* @ts-ignore */}
                                 <ThemeCard
                                     theme={{
                                         ...theme,
@@ -293,16 +336,17 @@ export function EditThemeModal({ open, onOpenChange, theme, onSave }: EditThemeM
                                         id: "preview",
                                         type: "preview"
                                     }}
+                                    likedThemes={null}
+                                    previewOnly
                                     disableDownloads
                                 />
                             </div>
                         </div>
                     )}
 
-                    {showPreview && (
+                    {showPreview && theme && (
                         <div className="lg:hidden col-span-1 space-y-4 pt-4 border-t border-muted mt-4 px-6 pb-6">
                             <h4 className="text-sm font-semibold">Preview</h4>
-                            {/* @ts-ignore */}
                             <ThemeCard
                                 theme={{
                                     ...theme,
@@ -315,6 +359,8 @@ export function EditThemeModal({ open, onOpenChange, theme, onSave }: EditThemeM
                                     id: "preview",
                                     type: "preview"
                                 }}
+                                likedThemes={null}
+                                previewOnly
                                 disableDownloads
                             />
                         </div>

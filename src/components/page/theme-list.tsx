@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
 import { useWebContext } from "@context/auth";
 import { getCookie } from "@utils/cookies";
 import {
-    OpenInNew as ArrowRightIcon,
-    Storage as DatabaseIcon,
+    ExternalLink as ArrowRightIcon,
+    Database as DatabaseIcon,
     Search as SearchIcon
-} from "@mui/icons-material";
+} from "lucide-react";
 import { Card } from "@components/ui/card";
 import { Input } from "@components/ui/input";
 import { SERVER } from "@constants";
@@ -15,42 +16,24 @@ import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select";
 import { Button } from "@components/ui/button";
-
-interface Theme {
-    _id: string;
-    title: string;
-    description: string;
-    file: string;
-    fileUrl: string;
-    contributors: string[];
-    sourceLink: string;
-    validatedUsers: {
-        [key: string]: {
-            id: string;
-            username: string;
-            avatar: string;
-        };
-    };
-    state: "pending" | "approved" | "rejected";
-    themeContent: string;
-    submittedAt: Date;
-    submittedBy: string;
-}
+import { type ThemeSubmission as Theme } from "@types";
 
 function ThemeList({ initialThemes }: { initialThemes?: Theme[] }) {
     const { authorizedUser, isAuthenticated, isLoading } = useWebContext();
+    const router = useRouter();
     const [themes, setThemes] = useState<Theme[]>(initialThemes || []);
     const [loading, setLoading] = useState(!initialThemes);
     const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState("pending");
 
-    const fetchThemes = async () => {
+    const fetchThemes = async (signal?: AbortSignal) => {
         try {
             const response = await fetch("/api/get/submissions", {
                 headers: {
                     Authorization: `Bearer ${getCookie("_dtoken")}`
-                }
+                },
+                signal
             });
 
             if (!response.ok) {
@@ -60,28 +43,38 @@ function ThemeList({ initialThemes }: { initialThemes?: Theme[] }) {
             const data = await response.json();
             setThemes(data);
         } catch (err) {
+            if (signal?.aborted) return;
             setError(err instanceof Error ? err.message : "Failed to load themes");
         } finally {
-            setLoading(false);
+            if (!signal?.aborted) {
+                setLoading(false);
+            }
         }
     };
 
     useEffect(() => {
-        if (!isAuthenticated || !authorizedUser?.admin || initialThemes) {
-            if (!isLoading && (!isAuthenticated || !authorizedUser?.admin)) {
-                window.location.href = "/";
-            }
+        if (isLoading) return;
+
+        if (!isAuthenticated || !authorizedUser?.admin) {
+            router.replace("/");
             return;
         }
 
-        fetchThemes();
+        if (initialThemes) return;
+
+        const controller = new AbortController();
+        fetchThemes(controller.signal);
+
+        return () => controller.abort();
     }, [isAuthenticated, authorizedUser, isLoading, initialThemes]);
 
-    const filteredThemes = themes.filter((theme) => {
-        const matchesSearch = (theme.title ?? "").toLowerCase().includes(search.toLowerCase()) || Object.values(theme.validatedUsers || {}).some((user) => (user.username ?? "").toLowerCase().includes(search.toLowerCase()));
-        const matchesFilter = filter === "all" || theme.state === filter;
-        return matchesSearch && matchesFilter;
-    });
+    const filteredThemes = useMemo(() => {
+        return themes.filter((theme) => {
+            const matchesSearch = (theme.title ?? "").toLowerCase().includes(search.toLowerCase()) || Object.values(theme.validatedUsers || {}).some((user) => (user.username ?? "").toLowerCase().includes(search.toLowerCase()));
+            const matchesFilter = filter === "all" || theme.state === filter;
+            return matchesSearch && matchesFilter;
+        });
+    }, [themes, search, filter]);
 
     if (isLoading || loading) {
         return (

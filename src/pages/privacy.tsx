@@ -31,7 +31,7 @@ export default function PrivacyPolicy() {
                                 Your privacy is important to us. Learn how we collect, use, and protect your information.
                             </p>
                             <p className="text-sm text-muted-foreground">
-                                Last updated: {lastUpdated.toLocaleDateString()}
+                                Last updated: {lastUpdated.toLocaleDateString("en-US", { timeZone: "UTC", year: "numeric", month: "long", day: "numeric" })}
                             </p>
                         </div>
 

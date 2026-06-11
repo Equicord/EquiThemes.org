@@ -1,6 +1,6 @@
-import clientPromise from "@utils/db";
+import clientPromise, { SUBMISSIONS_DB } from "@utils/db";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { isAuthed } from "@utils/auth";
+import { getToken, isAuthed } from "@utils/auth";
 import { DEV_SERVER, SERVER } from "@constants";
 import { UserData } from "@types";
 import { parseSourceUrl } from "@utils/sourceParser";
@@ -13,16 +13,10 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
         return res.status(405).json({ message: "Method not allowed", wants: "POST" });
     }
 
-    const { authorization } = req.headers;
-
-    if (!authorization) {
-        return res.status(400).json({ message: "Cannot check authorization without unique token" });
-    }
-
-    const token = authorization.replace("Bearer ", "").trim();
+    const token = getToken(req);
 
     if (!token) {
-        return res.status(400).json({ status: 400, message: "Invalid Request, unique user token is missing" });
+        return res.status(401).json({ status: 401, message: "Given token is not authorized" });
     }
 
     const requiredFields = ["title", "description", "sourceLink", "validatedUsers"];
@@ -61,7 +55,7 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
 
     try {
         const client = await clientPromise;
-        const db = client.db("submittedThemesDatabase");
+        const db = client.db(SUBMISSIONS_DB);
         const themesCollection = db.collection("pending");
 
         let themeContent: string | undefined;
@@ -74,23 +68,46 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
                         message: "Failed to fetch source link"
                     });
                 }
-            } catch (error: any) {
+            } catch (error) {
                 console.error("Source parse error:", error);
                 return res.status(400).json({
                     status: 400,
-                    message: error.message || "Failed to parse source link"
+                    message: error instanceof Error && error.message ? error.message : "Failed to parse source link"
                 });
             }
         }
 
+        const ALLOWED_TYPES = ["theme", "snippet"];
+        const rawType = typeof req.body.type === "string" ? req.body.type : "theme";
+        const type = ALLOWED_TYPES.includes(rawType) ? rawType : "theme";
+
+        const tags = Array.isArray(req.body.tags)
+            ? req.body.tags.filter((t: unknown): t is string => typeof t === "string")
+            : [];
+
+        const contributors = Array.isArray(req.body.contributors)
+            ? req.body.contributors.filter((c: unknown): c is string => typeof c === "string")
+            : [];
+
+        const validatedUsers = req.body.validatedUsers && typeof req.body.validatedUsers === "object" && !Array.isArray(req.body.validatedUsers)
+            ? req.body.validatedUsers
+            : {};
+
+        const resolvedImage = req.body.file && typeof req.body.file === "string" && req.body.file.startsWith("data:image")
+            ? req.body.file
+            : (typeof req.body.fileUrl === "string" && req.body.fileUrl ? req.body.fileUrl : `${SERVER}/not-found/image.png`);
+
         const submission = {
-            ...req.body,
             title: req.body.title.trim(),
             description: req.body.description.trim(),
             sourceLink: req.body.sourceLink.trim(),
+            type,
+            tags,
+            contributors,
+            validatedUsers,
             themeContent,
-            fileUrl: req.body.file && req.body.file.startsWith('data:image') ? req.body.file : (req.body.fileUrl || `${SERVER}/not-found/image.png`),
-            file: req.body.file && req.body.file.startsWith('data:image') ? req.body.file : (req.body.fileUrl || `${SERVER}/not-found/image.png`),
+            fileUrl: resolvedImage,
+            file: resolvedImage,
             submittedAt: new Date(),
             submittedBy: user.id,
             state: "pending"

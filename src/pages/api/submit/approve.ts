@@ -1,28 +1,24 @@
-import clientPromise from "@utils/db";
+import clientPromise, { SUBMISSIONS_DB, THEMES_DB } from "@utils/db";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { isAuthed } from "@utils/auth";
+import { getToken, isAuthed } from "@utils/auth";
 import { ObjectId } from "mongodb";
 import { validateInvite } from "@utils/extractInvite";
 import { SERVER } from "@constants";
 import { ErrorHandler } from "@lib/errorHandler";
+import { safeFetch } from "@utils/safeFetch";
 
 async function POST(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "POST") {
         return res.status(405).json({ message: "Method not allowed", wants: "POST" });
     }
 
-    const { authorization } = req.headers;
     const { id } = req.query;
     const { tags } = req.body;
 
-    if (!authorization) {
-        return res.status(400).json({ message: "Cannot check authorization without unique token" });
-    }
-
-    const token = authorization.replace("Bearer ", "").trim();
+    const token = getToken(req);
 
     if (!token) {
-        return res.status(400).json({ status: 400, message: "Invalid Request, unique user token is missing" });
+        return res.status(401).json({ status: 401, message: "Given token is not authorized" });
     }
 
     const user = await isAuthed(token as string);
@@ -45,8 +41,8 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
 
     try {
         const client = await clientPromise;
-        const submittedDb = client.db("submittedThemesDatabase");
-        const themesDb = client.db("themesDatabase");
+        const submittedDb = client.db(SUBMISSIONS_DB);
+        const themesDb = client.db(THEMES_DB);
         const pendingCollection = submittedDb.collection("pending");
         const themesCollection = themesDb.collection("themes");
         const notificationsCollection = themesDb.collection("notifications");
@@ -85,18 +81,25 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
             base64Content = theme.file.split(",")[1];
             isBase64 = true;
         } else if (theme.file.startsWith("http")) {
-            const imgRes = await fetch(theme.file);
+            let imgRes;
+            try {
+                imgRes = await safeFetch(theme.file);
+            } catch {
+                return res.status(400).json({
+                    status: 400,
+                    message: "Remote image URL is not allowed"
+                });
+            }
             if (!imgRes.ok) {
                 return res.status(400).json({
                     status: 400,
                     message: "Failed to fetch remote image"
                 });
             }
-            const arrayBuffer = await imgRes.arrayBuffer();
-            base64Content = Buffer.from(arrayBuffer).toString("base64");
+            base64Content = imgRes.body.toString("base64");
 
-            const contentType = imgRes.headers.get("content-type");
-            if (contentType && contentType.startsWith("image/")) {
+            const contentType = imgRes.headers["content-type"];
+            if (typeof contentType === "string" && contentType.startsWith("image/")) {
                 imageExt = contentType.split("/")[1];
             } else {
                 const urlExt = theme.file.split(".").pop();
@@ -112,8 +115,12 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
             });
         }
 
-        const safeTitle = theme.title.replace(/ /g, "-");
-        const fileName = `${safeTitle}_${totalThemes + 1}.${imageExt}`;
+        const safeTitle = theme.title
+            .replace(/ /g, "-")
+            .replace(/\.\./g, "")
+            .replace(/[^A-Za-z0-9._-]/g, "") || "theme";
+        const safeExt = imageExt.replace(/[^A-Za-z0-9]/g, "") || "png";
+        const fileName = `${safeTitle}_${totalThemes + 1}.${safeExt}`;
 
         if (isBase64) {
             const fs = require('fs');

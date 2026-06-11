@@ -1,16 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Carousel, CarouselContent, CarouselItem } from "@components/ui/carousel";
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@components/ui/carousel";
 import { Card, CardContent } from "@components/ui/card";
 import Autoplay from "embla-carousel-autoplay";
 import { ThemeCard } from "./card";
-
-interface Theme {
-    id: string;
-    name: string;
-    release_date: string;
-}
+import { type Theme } from "@types";
 
 interface ThemeCarouselProps {
     themes?: Theme[];
@@ -18,10 +13,19 @@ interface ThemeCarouselProps {
 
 export default function ThemeCarousel({ themes = [] }: ThemeCarouselProps) {
     const [isVisible, setIsVisible] = useState(false);
+    const [api, setApi] = useState<CarouselApi>();
     const containerRef = useRef<HTMLDivElement>(null);
+    const autoplayRef = useRef<ReturnType<typeof Autoplay> | null>(null);
+    const isVisibleRef = useRef(false);
+
+    if (!autoplayRef.current) {
+        autoplayRef.current = Autoplay({ delay: 5500, playOnInit: false });
+    }
+
+    const plugins = useMemo(() => [autoplayRef.current!], []);
 
     const sortedThemes = useMemo(() => {
-        return [...themes].sort((a, b) => new Date(b.release_date).getTime() - new Date(a.release_date).getTime()).slice(0, 10);
+        return [...themes].sort((a, b) => new Date(b.last_updated ?? b.release_date).getTime() - new Date(a.last_updated ?? a.release_date).getTime()).slice(0, 10);
     }, [themes]);
 
     useEffect(() => {
@@ -34,10 +38,46 @@ export default function ThemeCarousel({ themes = [] }: ThemeCarouselProps) {
         return () => observer.disconnect();
     }, []);
 
+    useEffect(() => {
+        isVisibleRef.current = isVisible;
+
+        const autoplay = autoplayRef.current;
+        if (!autoplay) return;
+
+        if (isVisible) {
+            autoplay.play();
+        } else {
+            autoplay.stop();
+        }
+    }, [isVisible]);
+
+    useEffect(() => {
+        if (!api) return;
+
+        // embla re-creates plugin state on reInit (e.g. window resize), which
+        // leaves autoplay stopped — re-assert the desired play state.
+        const onReInit = () => {
+            const autoplay = autoplayRef.current;
+            if (!autoplay) return;
+
+            if (isVisibleRef.current) {
+                autoplay.play();
+            } else {
+                autoplay.stop();
+            }
+        };
+
+        api.on("reInit", onReInit);
+        return () => {
+            api.off("reInit", onReInit);
+        };
+    }, [api]);
+
     return (
         <div className="w-full relative" ref={containerRef}>
             <Carousel
-                plugins={isVisible ? [Autoplay({ delay: 5500 })] : []}
+                setApi={setApi}
+                plugins={plugins}
                 opts={{
                     loop: true,
                     align: "start",
@@ -50,8 +90,7 @@ export default function ThemeCarousel({ themes = [] }: ThemeCarouselProps) {
                         <CarouselItem key={theme.id} className="w-full sm:basis-full md:basis-1/2 md:pl-4">
                             <Card className="bg-transparent border border-muted">
                                 <CardContent className="p-0">
-                                    {/* @ts-ignore */}
-                                    <ThemeCard theme={theme} noFooter diagonal lastUpdated />
+                                    <ThemeCard theme={theme} likedThemes={null} noFooter diagonal />
                                 </CardContent>
                             </Card>
                         </CarouselItem>

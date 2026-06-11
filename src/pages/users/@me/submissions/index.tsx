@@ -2,27 +2,15 @@ import React, { useEffect, useState } from "react";
 import { useWebContext } from "@context/auth";
 import { useRouter } from "next/router";
 import { getCookie } from "@utils/cookies";
-import { Warning as AlertTriangleIcon, CheckCircle as CheckCircleIcon, Schedule as HourglassIcon, Cancel as XCircleIcon } from "@mui/icons-material";
+import { AlertTriangle as AlertTriangleIcon, CheckCircle2 as CheckCircleIcon, Clock as HourglassIcon, XCircle as XCircleIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Badge } from "@components/ui/badge";
 import { Card } from "@components/ui/card";
-
-interface Submission {
-    title: string;
-    description: string;
-    sourceLink: string;
-    validatedUsers: { [key: string]: { id: string; username: string; avatar: string } };
-    themeContent: string;
-    submittedAt: { $date: string };
-    fileUrl?: string;
-    file?: string;
-    reason?: string;
-    state: string;
-}
+import { type ThemeSubmission as Submission } from "@types";
 
 const SubmissionsPage: React.FC = () => {
-    const { authorizedUser, isLoading } = useWebContext();
+    const { authorizedUser, isAuthenticated, isLoading } = useWebContext();
     const [submissions, setSubmissions] = useState<Submission[]>([]);
     const [isAdmin, setIsAdmin] = useState<boolean>(false);
     const [loading, setLoading] = useState(true);
@@ -31,44 +19,51 @@ const SubmissionsPage: React.FC = () => {
 
     useEffect(() => {
         if (isLoading) return;
+        const controller = new AbortController();
         const fetchSubmissions = async () => {
             setLoading(true);
             setError(null);
             try {
                 const token = getCookie("_dtoken");
-                if (!token) {
+                if (!isAuthenticated || !authorizedUser) {
                     router.push("/");
                     setLoading(false);
                     return;
                 }
-                setIsAdmin(authorizedUser.admin);
+                setIsAdmin(!!authorizedUser?.admin);
                 const submissionsResponse = await fetch("/api/get/submissions", {
                     headers: {
                         Authorization: `Bearer ${token}`
-                    }
+                    },
+                    signal: controller.signal
                 });
                 if (!submissionsResponse.ok) {
                     throw new Error("Failed to fetch submissions");
                 }
                 const data = await submissionsResponse.json();
+                if (controller.signal.aborted) return;
                 setSubmissions(data);
-            } catch (err: any) {
-                setError(err.message || "Unknown error");
+            } catch (err) {
+                if (controller.signal.aborted) return;
+                setError(err instanceof Error ? err.message : "Unknown error");
             } finally {
-                setLoading(false);
+                if (!controller.signal.aborted) {
+                    setLoading(false);
+                }
             }
         };
         fetchSubmissions();
-    }, [authorizedUser, isLoading]);
+        return () => controller.abort();
+    }, [authorizedUser?.id, authorizedUser?.admin, isAuthenticated, isLoading]);
 
     const getStateIcon = (state: string) => {
         switch (state) {
             case "approved":
-                return <CheckCircleIcon sx={{ display: "flex", width: 16, height: 16 }} className="!text-green-500" aria-label="Approved" />;
+                return <CheckCircleIcon className="flex w-4 h-4 !text-green-500" aria-label="Approved" />;
             case "pending":
-                return <HourglassIcon sx={{ display: "flex", width: 16, height: 16 }} className="!text-yellow-500" aria-label="Pending" />;
+                return <HourglassIcon className="flex w-4 h-4 !text-yellow-500" aria-label="Pending" />;
             default:
-                return <XCircleIcon sx={{ display: "flex", width: 16, height: 16 }} className="!text-red-500" aria-label="Rejected" />;
+                return <XCircleIcon className="flex w-4 h-4 !text-red-500" aria-label="Rejected" />;
         }
     };
 
@@ -83,7 +78,7 @@ const SubmissionsPage: React.FC = () => {
 
                     {isAdmin && (
                         <div className="flex items-center gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-4 py-3">
-                            <AlertTriangleIcon sx={{ width: 20, height: 20 }} className="!text-yellow-600 shrink-0" />
+                            <AlertTriangleIcon className="w-5 h-5 !text-yellow-600 shrink-0" />
                             <div>
                                 <span className="font-semibold text-yellow-600">Admin Warning:</span>
                                 <span className="text-yellow-600 ml-2">This page displays <b>all</b> theme submissions from all users</span>
@@ -99,7 +94,7 @@ const SubmissionsPage: React.FC = () => {
                     </div>
                 ) : error ? (
                     <Card className="p-12 text-center border-destructive/20 bg-destructive/5">
-                        <XCircleIcon sx={{ width: 48, height: 48 }} className="text-destructive mx-auto mb-4 opacity-70" />
+                        <XCircleIcon className="w-12 h-12 text-destructive mx-auto mb-4 opacity-70" />
                         <p className="text-destructive font-medium text-lg">{error}</p>
                     </Card>
                 ) : submissions.length === 0 ? (
@@ -109,15 +104,8 @@ const SubmissionsPage: React.FC = () => {
                     </Card>
                 ) : (
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                        {submissions.map((submission, idx) => (
-                            <Card key={idx} className="p-0 flex flex-col border-border/40 hover:border-border/80 transition-all duration-200 overflow-hidden h-full">
-                                {submission.fileUrl && (
-                                    <img
-                                        src={submission.fileUrl}
-                                        alt={submission.title}
-                                        className="w-full h-40 object-cover object-center border-b border-border/30"
-                                    />
-                                )}
+                        {submissions.map((submission) => (
+                            <Card key={submission._id} className="p-0 flex flex-col border-border/40 hover:border-border/80 transition-all duration-200 overflow-hidden h-full">
                                 <div className="p-6 flex flex-col flex-1 space-y-4">
 
                                     <div className="flex items-start justify-between gap-3">
@@ -142,7 +130,7 @@ const SubmissionsPage: React.FC = () => {
                                     </div>
 
 
-                                    <p className="text-sm text-muted-foreground line-clamp-3">
+                                    <div className="text-sm text-muted-foreground line-clamp-3">
                                         <ReactMarkdown
                                             remarkPlugins={[remarkGfm]}
                                             components={{
@@ -151,12 +139,12 @@ const SubmissionsPage: React.FC = () => {
                                         >
                                             {submission.description}
                                         </ReactMarkdown>
-                                    </p>
+                                    </div>
 
 
                                     {submission.reason && (
                                         <div className="flex items-start gap-2 text-sm bg-destructive/5 border border-destructive/20 rounded px-3 py-2">
-                                            <AlertTriangleIcon sx={{ width: 16, height: 16 }} className="text-destructive flex-shrink-0 mt-0.5" />
+                                            <AlertTriangleIcon className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-medium text-destructive">Reason:</p>
                                                 <p className="text-destructive/80 text-xs">{submission.reason}</p>
@@ -167,7 +155,7 @@ const SubmissionsPage: React.FC = () => {
 
                                     <div className="pt-4 border-t border-border/30 space-y-2">
                                         <p className="text-xs text-muted-foreground">
-                                            Submitted {new Date(submission.submittedAt as any as string).toLocaleDateString()} at {new Date(submission.submittedAt as any as string).toLocaleTimeString()}
+                                            Submitted {new Date(submission.submittedAt).toLocaleDateString()} at {new Date(submission.submittedAt).toLocaleTimeString()}
                                         </p>
                                         {submission.sourceLink && (
                                             <a

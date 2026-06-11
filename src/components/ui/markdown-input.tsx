@@ -70,7 +70,7 @@ export default function MarkdownInput({ className, onChange, onBlur, lines = 5, 
             .replace(/`([^`]+)`/g, '<span class="text-zinc-500">`</span>$1<span class="text-zinc-500">`</span>')
             .replace(/^(#+\s.*)/gm, '<span class="text-zinc-500">$1</span>')
             .replace(/^---$/gm, '<span class="text-zinc-500">---</span>')
-            .replace(/^(>\s.*)/gm, '<span class="text-zinc-500">&gt; </span>$1')
+            .replace(/^>(\s.*)/gm, '<span class="text-zinc-500">&gt;</span>$1')
             .replace(/(https?:\/\/[^\s)]+(?=\s|$|\)))/g, '<span class="text-blue-400">$1</span>')
             .replace(/\r?\n/g, "<br />");
     };
@@ -122,7 +122,7 @@ export default function MarkdownInput({ className, onChange, onBlur, lines = 5, 
                             <>
                                 <Textarea
                                     ref={textareaRef}
-                                    value={DOMPurify.sanitize(content)}
+                                    value={content}
                                     onChange={handleChange}
                                     onBlur={handleBlur}
                                     onScroll={() => {

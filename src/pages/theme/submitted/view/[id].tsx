@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useWebContext } from "@context/auth";
 import { getCookie } from "@utils/cookies";
-import { Check as CheckIcon, OpenInNew } from "@mui/icons-material";
-import CloseIcon from "@mui/icons-material/Close";
+import { Check, ExternalLink, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { Button } from "@components/ui/button";
 import { Badge } from "@components/ui/badge";
@@ -16,37 +15,19 @@ import { toast } from "@hooks/use-toast";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@lib/utils";
-import clientPromise from "@utils/db";
+import clientPromise, { SUBMISSIONS_DB } from "@utils/db";
 import { ObjectId } from "mongodb";
 import { getUser } from "@utils/auth";
+import type { GetServerSidePropsContext } from "next";
+import type { ThemeSubmission, ValidatedUser } from "@types";
 
-interface Theme {
-    _id: string;
-    title: string;
-    description: string;
-    file: string;
-    fileUrl: string;
-    contributors: string[];
-    sourceLink: string;
-    validatedUsers: {
-        id: string;
-        username: string;
-        avatar: string;
-    };
-    state: "approved" | "rejected" | "pending";
-    themeContent: string;
-    submittedAt: Date;
-    submittedBy: string;
-    reason?: string;
-}
-
-export async function getServerSideProps({ params, req }) {
+export async function getServerSideProps({ params, req }: GetServerSidePropsContext) {
     if (!params?.id) {
         return { notFound: true };
     }
 
     const client = await clientPromise;
-    const db = client.db("submittedThemesDatabase");
+    const db = client.db(SUBMISSIONS_DB);
 
     const cookieHeader = req.headers.cookie || "";
     const getCookieServer = (name: string) => {
@@ -60,7 +41,7 @@ export async function getServerSideProps({ params, req }) {
     const user = await getUser(token || "");
 
     try {
-        const theme = await db.collection("pending").findOne({ _id: new ObjectId(params.id) });
+        const theme = await db.collection("pending").findOne({ _id: new ObjectId(params.id as string) });
         if (!theme) return { notFound: true };
 
         const isAdmin = user?.admin || false;
@@ -87,17 +68,28 @@ export async function getServerSideProps({ params, req }) {
     }
 }
 
-export default function ThemeList({ id, initialTheme }: { id: string; initialTheme: Theme }) {
+export default function ThemeList({ id, initialTheme }: { id: string; initialTheme: ThemeSubmission }) {
     const { authorizedUser, isAuthenticated, isLoading } = useWebContext();
     const router = useRouter();
-    const [theme, setTheme] = useState<Theme>(initialTheme);
-    const [loading, setLoading] = useState(!initialTheme);
+    const [theme] = useState<ThemeSubmission>(initialTheme);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const [newTag, setNewTag] = useState("");
     const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
     const [rejectionReason, setRejectionReason] = useState("");
     const [banUser, setBanUser] = useState(false);
     const [banReason, setBanReason] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const isAdmin = Boolean(authorizedUser?.admin);
+
+    const decodedThemeContent = useMemo(() => {
+        if (!theme?.themeContent) return "";
+        try {
+            return atob(theme.themeContent);
+        } catch {
+            return "";
+        }
+    }, [theme?.themeContent]);
 
     const handleAddTag = () => {
         if (newTag && selectedTags.length < 5 && !selectedTags.includes(newTag)) {
@@ -111,8 +103,9 @@ export default function ThemeList({ id, initialTheme }: { id: string; initialThe
     };
 
     const handleApprove = async () => {
-        if (!id) return;
+        if (!id || isSubmitting) return;
 
+        setIsSubmitting(true);
         try {
             const response = await fetch(`/api/submit/approve?id=${id}`, {
                 method: "POST",
@@ -139,14 +132,17 @@ export default function ThemeList({ id, initialTheme }: { id: string; initialThe
         } catch (err) {
             toast({
                 title: "Error",
-                description: `Failed to approve theme with reason: ${err.message}`
+                description: `Failed to approve theme with reason: ${err instanceof Error ? err.message : String(err)}`
             });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     const handleReject = async () => {
-        if (!id) return;
+        if (!id || isSubmitting) return;
 
+        setIsSubmitting(true);
         try {
             const response = await fetch(`/api/submit/reject?id=${id}`, {
                 method: "POST",
@@ -174,14 +170,15 @@ export default function ThemeList({ id, initialTheme }: { id: string; initialThe
         } catch (err) {
             toast({
                 title: "Error",
-                description: `Failed to reject theme with reason: ${err.message}`
+                description: `Failed to reject theme with reason: ${err instanceof Error ? err.message : String(err)}`
             });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
-    const analyzeThemeContent = (content: string): string[] => {
+    const analyzeThemeContent = (decodedContent: string): string[] => {
         const tags: string[] = [];
-        const decodedContent = Buffer.from(content, "base64").toString();
 
         if (decodedContent.includes("import") || decodedContent.length > 500) {
             tags.push("theme");
@@ -204,7 +201,13 @@ export default function ThemeList({ id, initialTheme }: { id: string; initialThe
                 canvas.height = 100;
                 ctx?.drawImage(img, 0, 0, 100, 100);
 
-                const imageData = ctx?.getImageData(0, 0, 100, 100);
+                let imageData: ImageData | undefined;
+                try {
+                    imageData = ctx?.getImageData(0, 0, 100, 100);
+                } catch {
+                    // Cross-origin images can taint the canvas and make getImageData throw
+                    return resolve([]);
+                }
                 if (!imageData) return resolve([]);
 
                 let brightness = 0;
@@ -235,51 +238,23 @@ export default function ThemeList({ id, initialTheme }: { id: string; initialThe
 
 
     useEffect(() => {
-        if (theme?.file && theme?.themeContent) {
+        if (isAdmin && theme?.fileUrl && theme?.themeContent) {
             const analyzeTags = async () => {
-                const contentTags = analyzeThemeContent(theme.themeContent);
-                const imageTags = await analyzeImage(theme.file);
+                const contentTags = analyzeThemeContent(decodedThemeContent);
+                const imageTags = await analyzeImage(theme.fileUrl);
                 setSuggestedTags([...new Set([...contentTags, ...imageTags])]);
             };
             analyzeTags();
         }
-    }, [theme]);
+    }, [theme, isAdmin, decodedThemeContent]);
 
     useEffect(() => {
-        if (!isLoading && (!isAuthenticated || !authorizedUser?.admin)) {
-            window.location.href = "/";
+        if (!isLoading && (!isAuthenticated || (!authorizedUser?.admin && authorizedUser?.id !== theme?.submittedBy))) {
+            router.replace("/");
         }
-    }, [isAuthenticated, authorizedUser, isLoading]);
+    }, [isAuthenticated, authorizedUser, isLoading, router, theme?.submittedBy]);
 
-    useEffect(() => {
-        if (!id || !isAuthenticated || theme) return;
-
-        const fetchThemes = async () => {
-            try {
-                const response = await fetch(`/api/get/submissions?id=${id}`, {
-                    headers: {
-                        Authorization: `Bearer ${getCookie("_dtoken")}`
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error("Failed to fetch theme");
-                }
-
-                const data = await response.json();
-                setTheme(data);
-            } catch (err) {
-                console.error(err);
-                window.location.href = "/theme/submitted";
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchThemes();
-    }, [isAuthenticated, authorizedUser, isLoading, id, theme]);
-
-    if (isLoading || loading) {
+    if (isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
@@ -292,197 +267,188 @@ export default function ThemeList({ id, initialTheme }: { id: string; initialThe
     return (
         <div className="min-h-screen">
             <div className="container mx-auto px-4 py-12 rounded-lg">
-                {isLoading || loading ? (
-                    <div className="flex items-center justify-center min-h-[60vh]">
-                        <div className="flex flex-col items-center gap-4">
-                            <div className="animate-spin rounded-full h-8 w-8 border-2 border-muted border-t-primary"></div>
-                            <p className="text-muted-foreground">Loading theme details...</p>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="max-w-6xl mx-auto rounded-lg">
-                        <Card className="shadow-lg border-0 border-muted rounded-lg">
-                            <CardHeader className="border-b border-muted backdrop-blur">
-                                <div className="flex flex-col gap-4">
-                                    <div className="flex items-start justify-between">
-                                        <div className="space-y-1">
-                                            <CardTitle className="text-3xl font-bold">{theme?.title}</CardTitle>
-                                            <div className="flex items-center gap-2 text-muted-foreground">
-                                                <span>Submitted {theme?.submittedAt && formatDistanceToNow(new Date(theme.submittedAt))} ago</span>
-                                            </div>
+                <div className="max-w-6xl mx-auto rounded-lg">
+                    <Card className="shadow-lg border-0 border-muted rounded-lg">
+                        <CardHeader className="border-b border-muted backdrop-blur">
+                            <div className="flex flex-col gap-4">
+                                <div className="flex items-start justify-between">
+                                    <div className="space-y-1">
+                                        <CardTitle className="text-3xl font-bold">{theme?.title}</CardTitle>
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                            <span>Submitted {theme?.submittedAt && formatDistanceToNow(new Date(theme.submittedAt))} ago</span>
                                         </div>
-                                        <Badge variant="outline" className={cn("text-sm px-3 py-1", theme?.state === "approved" && "bg-green-500/10 text-green-600 border-green-500/20", theme?.state === "rejected" && "bg-red-500/10 text-red-600 border-red-500/20", theme?.state === "pending" && "bg-yellow-500/10 text-yellow-600 border-yellow-500/20")}>
-                                            {theme?.state === "approved" ? "Approved" : theme?.state === "rejected" ? "Rejected" : "Pending Review"}
-                                        </Badge>
+                                    </div>
+                                    <Badge variant="outline" className={cn("text-sm px-3 py-1", theme?.state === "approved" && "bg-green-500/10 text-green-600 border-green-500/20", theme?.state === "rejected" && "bg-red-500/10 text-red-600 border-red-500/20", theme?.state === "pending" && "bg-yellow-500/10 text-yellow-600 border-yellow-500/20")}>
+                                        {theme?.state === "approved" ? "Approved" : theme?.state === "rejected" ? "Rejected" : "Pending Review"}
+                                    </Badge>
+                                </div>
+                            </div>
+                        </CardHeader>
+
+                        <CardContent className="p-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                                <div className="lg:col-span-3 space-y-8">
+                                    <div className="prose dark:prose-invert max-w-none">
+                                        <h3 className="text-xl font-semibold mb-4">Description</h3>
+                                        <div className="text-muted-foreground">
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {theme?.description}
+                                            </ReactMarkdown>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h3 className="text-xl font-semibold mb-4">Theme Preview</h3>
+                                        {theme?.file ? (
+                                            <img src={theme.fileUrl} alt={theme.title} className="rounded-lg border border-muted shadow-sm w-full hover:shadow-md transition-shadow" />
+                                        ) : (
+                                            <div className="rounded-lg border border-muted bg-muted/30 h-48 flex items-center justify-center">
+                                                <p className="text-muted-foreground">No preview available</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <h3 className="text-xl font-semibold mb-4">Theme Content</h3>
+                                        <div className="rounded-lg border border-muted bg-muted/30 p-4 relative">
+                                            <pre className="text-sm overflow-auto max-h-[400px]">
+                                                <code>{decodedThemeContent}</code>
+                                            </pre>
+                                        </div>
+                                        <a href={theme?.sourceLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-2 text-sm text-muted-foreground hover:text-primary transition-colors">
+                                            <ExternalLink className="w-4 h-4" />
+                                            View source code
+                                        </a>
                                     </div>
                                 </div>
-                            </CardHeader>
-
-                            <CardContent className="p-6">
-                                <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                                    <div className="lg:col-span-3 space-y-8">
-                                        <div className="prose dark:prose-invert max-w-none">
-                                            <h3 className="text-xl font-semibold mb-4">Description</h3>
-                                            <div className="text-muted-foreground">
-                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                    {theme?.description}
-                                                </ReactMarkdown>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <h3 className="text-xl font-semibold mb-4">Theme Preview</h3>
-                                            {theme?.file ? (
-                                                <img src={theme.fileUrl} alt={theme.title} className="rounded-lg border border-muted shadow-sm w-full hover:shadow-md transition-shadow" />
-                                            ) : (
-                                                <div className="rounded-lg border border-muted bg-muted/30 h-48 flex items-center justify-center">
-                                                    <p className="text-muted-foreground">No preview available</p>
+                                <div className="lg:col-span-2 space-y-6">
+                                    <div className="sticky top-16">
+                                        <div className="rounded-lg border border-muted p-6 space-y-6">
+                                            <div>
+                                                <h3 className="text-xl font-semibold mb-4">Contributors</h3>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {Object.values(theme?.validatedUsers || {}).map((user: ValidatedUser) => (
+                                                        <div key={user.id} className="inline-flex items-center gap-2 bg-muted/30 rounded-full px-3 py-1">
+                                                            <img src={`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`} alt={user.username} className="w-6 h-6 rounded-full" />
+                                                            <span className="text-sm">{user.username}</span>
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                            )}
-                                        </div>
-
-                                        <div>
-                                            <h3 className="text-xl font-semibold mb-4">Theme Content</h3>
-                                            <div className="rounded-lg border border-muted bg-muted/30 p-4 relative">
-                                                <pre className="text-sm overflow-auto max-h-[400px]">
-                                                    <code>{Buffer.from(theme?.themeContent || "", "base64").toString()}</code>
-                                                </pre>
                                             </div>
-                                            <a href={theme?.sourceLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-2 text-sm text-muted-foreground hover:text-primary transition-colors">
-                                                <OpenInNew sx={{ width: 16, height: 16 }} />
-                                                View source code
-                                            </a>
-                                        </div>
-                                    </div>
-                                    <div className="lg:col-span-2 space-y-6">
-                                        <div className="sticky top-16">
-                                            <div className="rounded-lg border border-muted p-6 space-y-6">
-                                                <div>
-                                                    <h3 className="text-xl font-semibold mb-4">Contributors</h3>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {Object.values(theme?.validatedUsers || {}).map((user: any) => (
-                                                            <div key={user.id} className="inline-flex items-center gap-2 bg-muted/30 rounded-full px-3 py-1">
-                                                                <img src={`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`} alt={user.username} className="w-6 h-6 rounded-full" />
-                                                                <span className="text-sm">{user.username}</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
 
-                                                {theme?.state === "pending" && (
-                                                    <>
-                                                        <div>
-                                                            <h3 className="text-xl font-semibold mb-4">Theme Tags</h3>
-                                                            <div className="space-y-4">
-                                                                {suggestedTags.length > 0 && (
-                                                                    <div className="space-y-2">
-                                                                        <label className="text-sm font-medium">Suggested Tags</label>
-                                                                        <div className="flex flex-wrap gap-2">
-                                                                            {suggestedTags.map((tag) => (
-                                                                                <Badge key={tag} variant="outline" className="cursor-pointer hover:bg-primary/10" onClick={() => handleSuggestedTagClick(tag)}>
-                                                                                    {tag}
-                                                                                </Badge>
-                                                                            ))}
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-
+                                            {theme?.state === "pending" && isAdmin && (
+                                                <>
+                                                    <div>
+                                                        <h3 className="text-xl font-semibold mb-4">Theme Tags</h3>
+                                                        <div className="space-y-4">
+                                                            {suggestedTags.length > 0 && (
                                                                 <div className="space-y-2">
-                                                                    <label className="text-sm font-medium">Selected Tags ({selectedTags.length}/5)</label>
-                                                                    <div className="flex flex-wrap gap-2 min-h-[2rem]">
-                                                                        {selectedTags.map((tag) => (
-                                                                            <Badge key={tag} variant="secondary">
+                                                                    <label className="text-sm font-medium">Suggested Tags</label>
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {suggestedTags.map((tag) => (
+                                                                            <Badge key={tag} variant="outline" className="cursor-pointer hover:bg-primary/10" onClick={() => handleSuggestedTagClick(tag)}>
                                                                                 {tag}
-                                                                                <button onClick={() => handleRemoveTag(tag)} className="ml-2 hover:text-destructive">
-                                                                                    ×
-                                                                                </button>
                                                                             </Badge>
                                                                         ))}
-                                                                        {selectedTags.length === 0 && <p className="text-sm text-muted-foreground">No tags selected</p>}
                                                                     </div>
-                                                                </div>
-
-                                                                <div className="flex gap-2">
-                                                                    <Input type="text" value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="Add custom tag..." disabled={selectedTags.length >= 5} onKeyPress={(e) => e.key === "Enter" && handleAddTag()} />
-                                                                    <Button variant="outline" onClick={handleAddTag} disabled={selectedTags.length >= 5 || !newTag}>
-                                                                        Add
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="pt-4 border-t border-muted space-y-4">
-                                                            <div className="space-y-4">
-                                                                <div>
-                                                                    <label htmlFor="reject-reason" className="text-sm font-medium mb-2 block">Rejection Reason</label>
-                                                                    <textarea
-                                                                        id="reject-reason"
-                                                                        value={rejectionReason}
-                                                                        onChange={(e) => setRejectionReason(e.target.value)}
-                                                                        placeholder="Explain why this theme is being rejected..."
-                                                                        className="w-full h-20 p-2 border border-muted rounded-lg bg-muted/30 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
-                                                                    />
-                                                                </div>
-
-                                                                <div className="flex items-center gap-2">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        id="ban-user"
-                                                                        checked={banUser}
-                                                                        onChange={(e) => setBanUser(e.target.checked)}
-                                                                        className="w-4 h-4 rounded border-muted"
-                                                                    />
-                                                                    <label htmlFor="ban-user" className="text-sm font-medium cursor-pointer">Ban user from submissions</label>
-                                                                </div>
-
-                                                                {banUser && (
-                                                                    <div>
-                                                                        <label htmlFor="ban-reason" className="text-sm font-medium mb-2 block">Ban Reason <span className="text-xs text-muted-foreground">({banReason.length}/40)</span></label>
-                                                                        <input
-                                                                            id="ban-reason"
-                                                                            type="text"
-                                                                            value={banReason}
-                                                                            onChange={(e) => setBanReason(e.target.value.slice(0, 40))}
-                                                                            maxLength={40}
-                                                                            placeholder="e.g., Policy violation, spam..."
-                                                                            className="w-full h-9 px-2 border border-muted rounded-lg bg-muted/30 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                                                                        />
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
-                                                            <Button variant="default" className="w-full bg-green-600 hover:bg-green-700" onClick={handleApprove}>
-                                                                <CheckIcon sx={{ width: 16, height: 16, marginRight: 1 }} />
-                                                                Approve Theme
-                                                            </Button>
-                                                            <Button variant="destructive" className="w-full" onClick={handleReject}>
-                                                                <CloseIcon sx={{ width: 16, height: 16, marginRight: 1 }} />
-                                                                Reject Theme
-                                                            </Button>
-                                                        </div>
-                                                    </>
-                                                )}
-
-                                                {theme?.state !== "pending" && (
-                                                    <Alert variant={theme.state === "approved" ? "default" : "destructive"}>
-                                                        <p>
-                                                            This theme has been {theme.state} and cannot be modified.
-                                                            {theme?.reason && (
-                                                                <div>
-                                                                    <>Reason: {theme.reason.endsWith('.') ? theme.reason : `${theme.reason}.`}</>
                                                                 </div>
                                                             )}
-                                                        </p>
-                                                    </Alert>
-                                                )}
-                                            </div>
+
+                                                            <div className="space-y-2">
+                                                                <label className="text-sm font-medium">Selected Tags ({selectedTags.length}/5)</label>
+                                                                <div className="flex flex-wrap gap-2 min-h-[2rem]">
+                                                                    {selectedTags.map((tag) => (
+                                                                        <Badge key={tag} variant="secondary">
+                                                                            {tag}
+                                                                            <button onClick={() => handleRemoveTag(tag)} className="ml-2 hover:text-destructive">
+                                                                                ×
+                                                                            </button>
+                                                                        </Badge>
+                                                                    ))}
+                                                                    {selectedTags.length === 0 && <p className="text-sm text-muted-foreground">No tags selected</p>}
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex gap-2">
+                                                                <Input type="text" value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="Add custom tag..." disabled={selectedTags.length >= 5} onKeyPress={(e) => e.key === "Enter" && handleAddTag()} />
+                                                                <Button variant="outline" onClick={handleAddTag} disabled={selectedTags.length >= 5 || !newTag}>
+                                                                    Add
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="pt-4 border-t border-muted space-y-4">
+                                                        <div className="space-y-4">
+                                                            <div>
+                                                                <label htmlFor="reject-reason" className="text-sm font-medium mb-2 block">Rejection Reason</label>
+                                                                <textarea
+                                                                    id="reject-reason"
+                                                                    value={rejectionReason}
+                                                                    onChange={(e) => setRejectionReason(e.target.value)}
+                                                                    placeholder="Explain why this theme is being rejected..."
+                                                                    className="w-full h-20 p-2 border border-muted rounded-lg bg-muted/30 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                                                                />
+                                                            </div>
+
+                                                            <div className="flex items-center gap-2">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    id="ban-user"
+                                                                    checked={banUser}
+                                                                    onChange={(e) => setBanUser(e.target.checked)}
+                                                                    className="w-4 h-4 rounded border-muted"
+                                                                />
+                                                                <label htmlFor="ban-user" className="text-sm font-medium cursor-pointer">Ban user from submissions</label>
+                                                            </div>
+
+                                                            {banUser && (
+                                                                <div>
+                                                                    <label htmlFor="ban-reason" className="text-sm font-medium mb-2 block">Ban Reason <span className="text-xs text-muted-foreground">({banReason.length}/40)</span></label>
+                                                                    <input
+                                                                        id="ban-reason"
+                                                                        type="text"
+                                                                        value={banReason}
+                                                                        onChange={(e) => setBanReason(e.target.value.slice(0, 40))}
+                                                                        maxLength={40}
+                                                                        placeholder="e.g., Policy violation, spam..."
+                                                                        className="w-full h-9 px-2 border border-muted rounded-lg bg-muted/30 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                                                    />
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        <Button variant="default" className="w-full bg-green-600 hover:bg-green-700" onClick={handleApprove} disabled={isSubmitting}>
+                                                            <Check className="w-4 h-4 mr-2" />
+                                                            Approve Theme
+                                                        </Button>
+                                                        <Button variant="destructive" className="w-full" onClick={handleReject} disabled={isSubmitting}>
+                                                            <X className="w-4 h-4 mr-2" />
+                                                            Reject Theme
+                                                        </Button>
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {theme?.state !== "pending" && (
+                                                <Alert variant={theme.state === "approved" ? "default" : "destructive"}>
+                                                    <p>
+                                                        This theme has been {theme.state} and cannot be modified.
+                                                        {theme?.reason && (
+                                                            <div>
+                                                                <>Reason: {theme.reason.endsWith('.') ? theme.reason : `${theme.reason}.`}</>
+                                                            </div>
+                                                        )}
+                                                    </p>
+                                                </Alert>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </div>
     );

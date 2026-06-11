@@ -5,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@compo
 import { Button } from "@components/ui/button";
 import { cn } from "@lib/utils";
 import { MouseEvent, useEffect, useState, useMemo, memo } from "react";
-import { type Theme } from "@types";
+import { type LikeEntry, type LikesData, type Theme } from "@types";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -13,12 +13,21 @@ import Image from "next/image";
 
 interface ThemeCardProps {
     theme: Theme;
-    likedThemes: any;
+    likedThemes: LikesData | null;
     className?: string;
     disableDownloads?: boolean;
     noFooter?: boolean;
     diagonal?: boolean;
+    previewOnly?: boolean;
 }
+
+// The card body is wrapped in a <Link>; markdown descriptions can contain links,
+// and <a> inside <a> is invalid HTML (browsers re-parent it → hydration mismatch).
+// Render markdown links as styled text instead.
+const markdownComponents = {
+    a: ({ children }: { children?: React.ReactNode }) => <span className="text-primary underline">{children}</span>,
+    input: () => null
+};
 
 function timeSince(date: Date) {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -45,16 +54,21 @@ function timeSince(date: Date) {
     return "Just now";
 }
 
-export const ThemeCard = memo(({ theme, likedThemes, className, noFooter = false, disableDownloads = false, diagonal = false }: ThemeCardProps) => {
+export const ThemeCard = memo(({ theme, likedThemes, className, noFooter = false, disableDownloads = false, diagonal = false, previewOnly = false }: ThemeCardProps) => {
     const [isLiked, setLiked] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const [isDownloaded, setIsDownloaded] = useState(false);
     const [imgSrc, setImgSrc] = useState(theme.thumbnail_url);
     const [useFallback, setUseFallback] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     useEffect(() => {
         if (likedThemes?.likes?.length) {
-            const hasLiked = likedThemes.likes.some((liked: any) => liked.themeId === theme.id && liked.hasLiked !== false);
+            const hasLiked = likedThemes.likes.some((liked: LikeEntry) => String(liked.themeId) === String(theme.id) && liked.hasLiked === true);
             setLiked(hasLiked);
         } else {
             setLiked(false);
@@ -87,18 +101,22 @@ export const ThemeCard = memo(({ theme, likedThemes, className, noFooter = false
             setUseFallback(true);
             const filename = theme.thumbnail_url.split('/').pop();
             if (filename) {
-                const fallbackFilename = decodeURIComponent(filename).replace(/-/g, ' ');
+                const fallbackFilename = decodeURIComponent(filename);
                 setImgSrc(`https://raw.githubusercontent.com/Equicord/Equithemes.org/master/public/thumbnails/${encodeURIComponent(fallbackFilename)}`);
             }
         }
     };
 
     const lastUpdated = theme.last_updated ?? theme.release_date;
-    const relativeTime = useMemo(() => timeSince(new Date(lastUpdated)), [lastUpdated]);
+    // timeSince depends on "now", which differs between prerender and hydration —
+    // render a deterministic absolute date until mounted, then swap to relative time.
+    const relativeTime = useMemo(
+        () => (mounted ? timeSince(new Date(lastUpdated)) : new Date(lastUpdated).toLocaleDateString("en-US", { timeZone: "UTC", year: "numeric", month: "short", day: "numeric" })),
+        [lastUpdated, mounted]
+    );
 
-    return (
-        <Card className={cn("group overflow-hidden flex flex-col h-full transition-all duration-200 hover:shadow-lg hover:-translate-y-1 border-border/40 bg-card/50 backdrop-blur-sm", className)}>
-            <Link href={`/theme/${Number(theme.id)}`} className="h-full flex flex-col">
+    const cardContent = (
+        <>
                 {diagonal ? (
                     <div className="flex h-full flex-1">
                         <div className="w-1/2 relative flex flex-col" onMouseLeave={handleMouseLeave}>
@@ -141,7 +159,7 @@ export const ThemeCard = memo(({ theme, likedThemes, className, noFooter = false
                             <div>
                                 <h3 className="text-lg font-semibold tracking-tight text-primary mb-2">{theme.name}</h3>
                                 <div className="description text-sm text-foreground leading-relaxed line-clamp-3">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                                         {theme.description}
                                     </ReactMarkdown>
                                 </div>
@@ -237,7 +255,7 @@ export const ThemeCard = memo(({ theme, likedThemes, className, noFooter = false
                         <CardContent className="p-5 flex-grow">
                             <h3 className="text-lg font-semibold tracking-tight text-primary mb-2">{theme.name}</h3>
                             <div className="description line-clamp-3 text-sm text-foreground leading-relaxed">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                                     {theme.description}
                                 </ReactMarkdown>
                             </div>
@@ -275,7 +293,16 @@ export const ThemeCard = memo(({ theme, likedThemes, className, noFooter = false
                         )}
                     </>
                 )}
-            </Link>
+        </>
+    );
+
+    return (
+        <Card className={cn("group overflow-hidden flex flex-col h-full transition-all duration-200 hover:shadow-lg hover:-translate-y-1 border-border/40 bg-card/50 backdrop-blur-sm", className)}>
+            {previewOnly ? (
+                <div className="h-full flex flex-col">{cardContent}</div>
+            ) : (
+                <Link href={`/theme/${Number(theme.id)}`} className="h-full flex flex-col">{cardContent}</Link>
+            )}
         </Card>
     );
 });

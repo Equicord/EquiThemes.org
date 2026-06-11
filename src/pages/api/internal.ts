@@ -1,13 +1,16 @@
-"use cache";
-
 import { ErrorHandler } from "@lib/errorHandler";
-import clientPromise from "@utils/db";
+import { getToken, isAuthed } from "@utils/auth";
+import clientPromise, { SUBMISSIONS_DB, THEMES_DB } from "@utils/db";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 async function GET(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== "GET") {
         return res.status(405).json({ message: "Method not allowed", wants: "GET" });
     }
+
+    const token = getToken(req);
+    const user = await isAuthed(token);
+    if (!user || !user.admin) return res.status(403).json({ status: 403, message: "Admin access required" });
 
     const currentDate = new Date();
     const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -23,7 +26,7 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
     ];
 
     const client = await clientPromise;
-    const db = client.db("themesDatabase");
+    const db = client.db(THEMES_DB);
 
     const usersColl = db.collection("users");
     const themesColl = db.collection("themes");
@@ -74,7 +77,7 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
         }
     ];
 
-    const submittedDb = client.db("submittedThemesDatabase");
+    const submittedDb = client.db(SUBMISSIONS_DB);
     const pendingColl = submittedDb.collection("pending");
 
     const [usersResult, themesResult, authorResult, downloadsResult, likesResult, dbStats, serverStatus, pendingCount] = await Promise.all([
@@ -130,7 +133,7 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
         }
     };
 
-    res.setHeader("Cache-Control", "public, max-age=1200");
+    res.setHeader("Cache-Control", "private, no-store");
     res.setHeader("Content-Type", "application/json");
     res.status(200).json(data);
 }

@@ -1,6 +1,6 @@
-import clientPromise from "@utils/db";
+import clientPromise, { SUBMISSIONS_DB, THEMES_DB, USERS_DB } from "@utils/db";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { isAuthed } from "@utils/auth";
+import { getToken, isAuthed } from "@utils/auth";
 import { ObjectId } from "mongodb";
 import { ErrorHandler } from "@lib/errorHandler";
 
@@ -9,18 +9,13 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
         return res.status(405).json({ message: "Method not allowed", wants: "POST" });
     }
 
-    const { authorization } = req.headers;
     const { id } = req.query;
     const { reason = "", banUser = false, banReason = "" } = req.body;
 
-    if (!authorization) {
-        return res.status(400).json({ message: "Cannot check authorization without unique token" });
-    }
-
-    const token = authorization.replace("Bearer ", "").trim();
+    const token = getToken(req);
 
     if (!token) {
-        return res.status(400).json({ status: 400, message: "Invalid Request, unique user token is missing" });
+        return res.status(401).json({ status: 401, message: "Given token is not authorized" });
     }
 
     const user = await isAuthed(token as string);
@@ -43,11 +38,11 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
 
     try {
         const client = await clientPromise;
-        const submittedDb = client.db("submittedThemesDatabase");
-        const usersDb = client.db("discordUsers");
+        const submittedDb = client.db(SUBMISSIONS_DB);
+        const usersDb = client.db(USERS_DB);
         const pendingCollection = submittedDb.collection("pending");
         const usersCollection = usersDb.collection("users");
-        const themesCollection = client.db("themesDatabase");
+        const themesCollection = client.db(THEMES_DB);
         const notificationsCollection = themesCollection.collection("notifications");
 
         const theme = await pendingCollection.findOne({ _id: new ObjectId(id as string) });

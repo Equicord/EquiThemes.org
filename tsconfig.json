@@ -19,7 +19,7 @@
     "jsx": "react-jsx",
     "paths": {
       "@types": [
-        "src/types.ts"
+        "src/types/index.ts"
       ],
       "@constants": [
         "src/constants.ts"
