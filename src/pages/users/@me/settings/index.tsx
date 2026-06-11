@@ -133,7 +133,7 @@ export default function SettingsPage() {
         <div className="container mx-auto py-12 max-w-3xl">
             <h1 className="text-4xl font-extrabold mb-10 text-center tracking-tight">Settings</h1>
             <Tabs defaultValue="account" className="space-y-6">
-                <TabsList className="w-full grid grid-cols-2 bg-muted rounded-lg mb-2 border-none h-11 p-1">
+                <TabsList className="w-full grid grid-cols-2 bg-muted rounded-lg mb-2 border-none h-11">
                     <TabsTrigger value="account" className="h-full rounded-md border-none data-[state=active]:border-none data-[state=active]:bg-primary/90 data-[state=active]:text-white transition-colors data-[state=active]:shadow-sm">
                         <SettingsIcon className="w-4 h-4 mr-2" />
                         Account

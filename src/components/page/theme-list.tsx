@@ -43,7 +43,7 @@ function ThemeList({ initialThemes }: { initialThemes?: Theme[] }) {
     const [loading, setLoading] = useState(!initialThemes);
     const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState("");
-    const [filter, setFilter] = useState("all");
+    const [filter, setFilter] = useState("pending");
 
     const fetchThemes = async () => {
         try {

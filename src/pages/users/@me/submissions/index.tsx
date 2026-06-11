@@ -51,8 +51,6 @@ const SubmissionsPage: React.FC = () => {
                     throw new Error("Failed to fetch submissions");
                 }
                 const data = await submissionsResponse.json();
-                const order = { pending: 0, approved: 1 };
-                data.sort((a, b) => (order[a.state] ?? 2) - (order[b.state] ?? 2));
                 setSubmissions(data);
             } catch (err: any) {
                 setError(err.message || "Unknown error");
