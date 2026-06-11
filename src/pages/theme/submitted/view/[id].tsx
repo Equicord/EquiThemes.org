@@ -37,6 +37,7 @@ interface Theme {
     themeContent: string;
     submittedAt: Date;
     submittedBy: string;
+    reason?: string;
 }
 
 export async function getServerSideProps({ params, req }) {

@@ -1,7 +1,6 @@
 "use cache";
 
 import { NextApiRequest, NextApiResponse } from "next";
-import { SERVER } from "@constants";
 import { ErrorHandler } from "@lib/errorHandler";
 export const dynamic = "force-dynamic";
 
@@ -22,9 +21,9 @@ async function getBrowser() {
 
         cachedBrowser = await puppeteerCore.launch({
             args: [...chromium.args, ...PUPPETEER_LAUNCH_ARGS],
-            defaultViewport: chromium.defaultViewport,
+            defaultViewport: (chromium as any).defaultViewport,
             executablePath,
-            headless: chromium.headless
+            headless: (chromium as any).headless
         });
     } else {
         const { default: puppeteer } = await import("puppeteer");

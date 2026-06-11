@@ -7,7 +7,7 @@ const RATE_LIMIT_DELAY = 500;
 
 async function generatePermanentGitHubLink(url) {
     try {
-        let match = url.match(/github\.com\/([^\/]+)\/([^\/]+)\/(?:blob|raw)\/([^\/]+)\/(.+)/);
+        let match = url.match(/github\.com\/([^/]+)\/([^/]+)\/(?:blob|raw)\/([^/]+)\/(.+)/);
         if (!match) return null;
 
         const [, user, repo, ref, path] = match;
