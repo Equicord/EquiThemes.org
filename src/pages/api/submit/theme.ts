@@ -99,9 +99,6 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
         const item = await themesCollection.insertOne(submission);
         const id = item.insertedId;
 
-        console.log(item);
-        console.log(req.body);
-
         try {
             const webhookBody = {
                 embeds: [

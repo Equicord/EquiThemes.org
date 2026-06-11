@@ -152,7 +152,7 @@ function ThemeList({ initialThemes }: { initialThemes?: Theme[] }) {
                             <Card key={theme._id} className="p-6 border-border/40 hover:border-border/80 transition-all duration-200 flex flex-col h-full">
                                 <div className="space-y-4 flex flex-col flex-grow">
                                     <div className="flex justify-between items-start gap-3">
-                                        <h3 className="font-semibold text-lg text-foreground break-words flex-grow leading-tight">{theme.title}</h3>
+                                        <h3 className="font-semibold text-lg text-foreground break-words flex-grow leading-tight min-w-0">{theme.title}</h3>
                                         <Badge
                                             variant={theme.state === "approved" ? "default" : theme.state === "rejected" ? "destructive" : "secondary"}
                                             className="flex-shrink-0 whitespace-nowrap"

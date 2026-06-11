@@ -36,7 +36,7 @@ export async function proxy(req: NextRequest) {
 
     if (logRequests) logRequest(req);
 
-    if (isFiltered && blockResponse) {
+    if (logRequests && isFiltered && blockResponse) {
         const ts = new Date().toISOString();
         const ip = getClientIp(req);
         console.log(`[${ts}] BLOCKED ${req.method} ${req.nextUrl.pathname}${req.nextUrl.search} - ip: ${ip || "unknown"} - referer: ${referer} | ua: ${ua}`);

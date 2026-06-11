@@ -121,7 +121,7 @@ const SubmissionsPage: React.FC = () => {
                                 <div className="p-6 flex flex-col flex-1 space-y-4">
 
                                     <div className="flex items-start justify-between gap-3">
-                                        <h3 className="font-semibold text-lg text-foreground break-words flex-grow leading-tight">
+                                        <h3 className="font-semibold text-lg text-foreground break-words flex-grow leading-tight min-w-0">
                                             {submission.title}
                                         </h3>
                                         <Badge

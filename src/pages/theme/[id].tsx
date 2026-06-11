@@ -9,14 +9,13 @@ import type {
 } from "next";
 import App from "@components/page/theme-info";
 import { type Theme } from "@types";
+import { SERVER } from "@constants";
 
 export const getStaticPaths: GetStaticPaths = async () => {
-    const res = await fetch(
-        "https://raw.githubusercontent.com/Equicord/EquiThemes.org/refs/heads/master/themes.json"
-    );
-    const themes = await res.json();
+    const res = await fetch(`${SERVER}/api/themes`);
+    const themesData = await res.json();
 
-    const paths = themes.map((theme: Theme) => ({
+    const paths = themesData.map((theme: any) => ({
         params: { id: String(theme.id) }
     }));
 
@@ -28,10 +27,10 @@ export const getStaticPaths: GetStaticPaths = async () => {
 
 export const getStaticProps = (async (context) => {
     const { id } = context.params!;
-    const res = await fetch("https://raw.githubusercontent.com/Equicord/EquiThemes.org/refs/heads/master/themes.json");
-    const themes: Theme[] = await res.json();
+    const res = await fetch(`${SERVER}/api/themes?content=true`);
+    const themesData = await res.json();
 
-    const theme = themes.find(x => String(x.id) === id || x.name.toLowerCase() === (id as string).toLowerCase());
+    const theme = themesData.find((x: any) => String(x.id) === id || x.name.toLowerCase() === (id as string).toLowerCase());
 
     if (!theme) {
         return { notFound: true };

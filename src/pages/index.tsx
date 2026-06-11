@@ -4,12 +4,12 @@ import Head from "next/head";
 import type { GetStaticProps, InferGetStaticPropsType } from "next";
 import { type Theme } from "@types";
 
+import { SERVER } from "@constants";
+
 export const getStaticProps = (async () => {
-    const res = await fetch("https://raw.githubusercontent.com/Equicord/EquiThemes.org/refs/heads/master/themes.json");
-    const themes = (await res.json()).map((t: Theme) => {
-        const { content, ...rest } = t;
-        return rest;
-    });
+    const res = await fetch(`${SERVER}/api/themes`);
+    const themes = await res.json();
+
     return { props: { themes }, revalidate: 60 };
 }) satisfies GetStaticProps<{
     themes: Theme[];

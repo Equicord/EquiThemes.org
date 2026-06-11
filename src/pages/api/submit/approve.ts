@@ -67,68 +67,62 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
             });
         }
 
-        await pendingCollection.updateOne(
-            { _id: new ObjectId(id as string) },
-            {
-                $set: {
-                    state: "approved",
-                    approvedAt: new Date(),
-                    moderator: {
-                        discord_snowflake: user.id,
-                        discord_name: user.global_name || "",
-                        avatar_url: user.avatar || ""
-                    }
-                },
-                $unset: {
-                    contributors: "",
-                    submittedBy: ""
-                }
-            }
-        );
-
-        await notificationsCollection.insertOne({
-            userId: theme.submittedBy,
-            type: "theme_approved",
-            themeId: id,
-            themeName: theme.title,
-            message: `Your theme "${theme.title}" has been approved!`,
-            createdAt: new Date(),
-            read: false
-        });
-
         const totalThemes = await themesCollection.countDocuments();
 
-        const mimeMatch = theme.file.match(/^data:image\/([a-zA-Z]+);base64,/);
-        if (!mimeMatch) {
+        let imageExt = "png";
+        let base64Content = "";
+        let isBase64 = false;
+
+        if (theme.file.startsWith("data:image")) {
+            const mimeMatch = theme.file.match(/^data:image\/([a-zA-Z]+);base64,/);
+            if (!mimeMatch) {
+                return res.status(400).json({
+                    status: 400,
+                    message: "Invalid image format"
+                });
+            }
+            imageExt = mimeMatch[1];
+            base64Content = theme.file.split(",")[1];
+            isBase64 = true;
+        } else if (!theme.file.startsWith("http")) {
             return res.status(400).json({
                 status: 400,
                 message: "Invalid image format"
             });
         }
 
-        const imageExt = mimeMatch[1];
-        const base64Content = theme.file.split(",")[1];
         const fileName = `${theme.title}_${totalThemes + 1}.${imageExt}`;
 
-        const githubResponse = await fetch(`https://api.github.com/repos/Equicord/Equithemes.org/contents/public/thumbnails/${fileName}`, {
-            method: "PUT",
-            headers: {
-                Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
-                "Content-Type": "application/json",
-                Accept: "application/vnd.github.v3+json"
-            },
-            body: JSON.stringify({
-                message: `${theme.title}: approved`,
-                content: base64Content,
-                branch: "main"
-            })
-        });
+        if (isBase64) {
+            const fs = require('fs');
+            const path = require('path');
+            const localPath = path.join(process.cwd(), 'public', 'thumbnails', fileName);
+            try {
+                fs.writeFileSync(localPath, Buffer.from(base64Content, "base64"));
+            } catch (err) {
+                console.error("Failed to write thumbnail locally:", err);
+            }
 
-        if (!githubResponse.ok) {
-            return res.status(500).json({
-                status: 500,
-                message: "Failed to upload thumbnail to GitHub"
+            const githubResponse = await fetch(`https://api.github.com/repos/Equicord/Equithemes.org/contents/public/thumbnails/${fileName}`, {
+                method: "PUT",
+                headers: {
+                    Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+                    "Content-Type": "application/json",
+                    Accept: "application/vnd.github.v3+json"
+                },
+                body: JSON.stringify({
+                    message: `${theme.title}: approved`,
+                    content: base64Content,
+                    branch: "master"
+                })
             });
+
+            if (!githubResponse.ok) {
+                return res.status(500).json({
+                    status: 500,
+                    message: "Failed to upload thumbnail to GitHub"
+                });
+            }
         }
 
         const metadataMatch = Buffer.from(theme.themeContent, "base64")
@@ -170,7 +164,7 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
             })),
             tags: tags.length > 0 ? [...tags] : [],
             version: version ? version[1] : "1.0.0",
-            thumbnail_url: `${SERVER}/theme/${theme.title.replace(/ /g, "-")}_${totalThemes + 1}.${imageExt}`,
+            thumbnail_url: isBase64 ? `${SERVER}/theme/${theme.title.replace(/ /g, "-")}_${totalThemes + 1}.${imageExt}` : theme.file,
             release_date: new Date().toISOString(),
             guild: guildInfo,
             content: theme.themeContent,
@@ -179,6 +173,35 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
         };
 
         await themesCollection.insertOne(newTheme);
+
+        await pendingCollection.updateOne(
+            { _id: new ObjectId(id as string) },
+            {
+                $set: {
+                    state: "approved",
+                    approvedAt: new Date(),
+                    moderator: {
+                        discord_snowflake: user.id,
+                        discord_name: user.global_name || "",
+                        avatar_url: user.avatar || ""
+                    }
+                },
+                $unset: {
+                    contributors: "",
+                    submittedBy: ""
+                }
+            }
+        );
+
+        await notificationsCollection.insertOne({
+            userId: theme.submittedBy,
+            type: "theme_approved",
+            themeId: id,
+            themeName: theme.title,
+            message: `Your theme "${theme.title}" has been approved!`,
+            createdAt: new Date(),
+            read: false
+        });
 
         res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
         return res.status(200).json({ status: 200, title: theme.title, message: "Theme approved" });
