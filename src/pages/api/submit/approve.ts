@@ -110,7 +110,7 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
         const base64Content = theme.file.split(",")[1];
         const fileName = `${theme.title}_${totalThemes + 1}.${imageExt}`;
 
-        const githubResponse = await fetch(`https://api.github.com/repos/Equicord/EquiThemes.org/contents/public/thumbnails/${fileName}`, {
+        const githubResponse = await fetch(`https://api.github.com/repos/Equicord/Equithemes.org/contents/public/thumbnails/${fileName}`, {
             method: "PUT",
             headers: {
                 Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
