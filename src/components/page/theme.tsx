@@ -260,7 +260,7 @@ function App({ themes }: { themes: Theme[] }) {
             </Tabs>
 
             {showScrollTop && (
-                <Button variant="outline" size="icon" className="fixed bottom-6 right-6 rounded-full mb-2" onClick={scrollToTop}>
+                <Button variant="outline" size="icon" className="fixed bottom-6 right-6 rounded-full mb-4" onClick={scrollToTop}>
                     <ArrowUp className="h-4 w-4" />
                 </Button>
             )}
