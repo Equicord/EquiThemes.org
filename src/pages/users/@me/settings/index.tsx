@@ -3,15 +3,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@comp
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@components/ui/alert-dialog";
-import { 
-    ContentCopy as CopyIcon, 
-    Visibility as EyeIcon, 
-    GitHub as GithubIcon, 
-    Tag as HashIcon, 
-    Refresh as RefreshIcon, 
-    Settings as SettingsIcon, 
-    Person as UserIcon, 
-    AccountCircle as UserCircleIcon 
+import {
+    ContentCopy as CopyIcon,
+    Visibility as EyeIcon,
+    GitHub as GithubIcon,
+    Tag as HashIcon,
+    Refresh as RefreshIcon,
+    Settings as SettingsIcon,
+    Person as UserIcon,
+    AccountCircle as UserCircleIcon
 } from "@mui/icons-material";
 import { deleteCookie, getCookie, setCookie } from "@utils/cookies";
 import { useCallback, useEffect, useState, useRef } from "react";
@@ -133,12 +133,12 @@ export default function SettingsPage() {
         <div className="container mx-auto py-12 max-w-3xl">
             <h1 className="text-4xl font-extrabold mb-10 text-center tracking-tight">Settings</h1>
             <Tabs defaultValue="account" className="space-y-6">
-                <TabsList className="w-full grid grid-cols-2 bg-muted rounded-lg mb-2">
-                    <TabsTrigger value="account" className="rounded-l-lg data-[state=active]:bg-primary/90 data-[state=active]:text-white transition-colors">
+                <TabsList className="w-full grid grid-cols-2 bg-muted rounded-lg mb-2 border-none h-11">
+                    <TabsTrigger value="account" className="h-full rounded-md border-none data-[state=active]:border-none data-[state=active]:bg-primary/90 data-[state=active]:text-white transition-colors data-[state=active]:shadow-sm">
                         <SettingsIcon className="w-4 h-4 mr-2" />
                         Account
                     </TabsTrigger>
-                    <TabsTrigger value="data" className="rounded-r-lg data-[state=active]:bg-primary/90 data-[state=active]:text-white transition-colors">
+                    <TabsTrigger value="data" className="h-full rounded-md border-none data-[state=active]:border-none data-[state=active]:bg-primary/90 data-[state=active]:text-white transition-colors data-[state=active]:shadow-sm">
                         <UserCircleIcon className="w-4 h-4 mr-2" />
                         User Data
                     </TabsTrigger>
@@ -154,11 +154,12 @@ export default function SettingsPage() {
                                 <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
                                     <HashIcon className="w-5 h-5 text-primary" /> API Key
                                 </h2>
-                                <Alert className="border-yellow-600/30 bg-yellow-500/10 shadow-none">
-                                    <AlertTitle className="text-md font-semibold text-yellow-600 flex items-center gap-2">
-                                        <EyeIcon className="w-4 h-4" /> Access to your Account Token
-                                    </AlertTitle>
-                                    <AlertDescription className="text-yellow-700/90 text-sm">
+                                <div className="rounded-lg border border-yellow-600/30 bg-yellow-500/10 px-4 py-3 text-sm">
+                                    <div className="flex items-center gap-2 font-semibold text-yellow-600 mb-1">
+                                        <EyeIcon sx={{ display: "flex", width: 16, height: 16 }} className="!text-yellow-600" />
+                                        Access to your Account Token
+                                    </div>
+                                    <div className="text-yellow-700/90 text-sm">
                                         <p className="text-sm text-muted-foreground">
                                             Your API key is a secure token that identifies your account. It grants access to:
                                             <ul className="list-disc list-inside mt-2 space-y-1">
@@ -170,8 +171,8 @@ export default function SettingsPage() {
                                                 This is <b>not</b> your Discord Account token, however, still, do not share it with anyone who you don't trust.
                                             </span>
                                         </p>
-                                    </AlertDescription>
-                                </Alert>
+                                    </div>
+                                </div>
                                 <APIKey />
                             </div>
                             <div className="border-t border-muted/30 pt-8">
@@ -272,11 +273,12 @@ function DeleteAccount() {
             <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
                 <UserCircleIcon className="w-5 h-5 text-destructive" /> Delete Account
             </h2>
-            <Alert className="border-red-600/30 bg-red-500/10 shadow-none">
-                <AlertTitle className="text-md font-semibold text-red-600 flex items-center gap-2">
-                    <RefreshIcon className="w-4 h-4" /> Deleting your Account
-                </AlertTitle>
-                <AlertDescription className="text-red-700/90 text-sm">
+            <div className="rounded-lg border border-red-600/30 bg-red-500/10 px-4 py-3 text-sm">
+                <div className="flex items-center gap-2 font-semibold text-red-600 mb-1">
+                    <RefreshIcon sx={{ display: "flex", width: 16, height: 16 }} className="!text-red-600" />
+                    Deleting your Account
+                </div>
+                <div className="text-red-700/90 text-sm">
                     <p className="text-sm text-muted-foreground">
                         This will delete your account including:
                         <ul className="list-disc list-inside mt-2 space-y-1">
@@ -284,13 +286,14 @@ function DeleteAccount() {
                             <li>All liked themes</li>
                             <li>Other data associated with your account</li>
                         </ul>
-                        <div className="flex items-center gap-2 mt-2">
+                        <div className="mt-2">
                             <span>If you don't want your themes to be deleted, you can revoke the authorization instead below.</span>
+                            <br />
                             <b>This action cannot be undone.</b>
                         </div>
                     </p>
-                </AlertDescription>
-            </Alert>
+                </div>
+            </div>
             {authorizedUser?.admin && (
                 <Alert className="border-yellow-600/30 bg-yellow-500/10 shadow-none">
                     <AlertDescription className="text-yellow-700/90 text-sm">

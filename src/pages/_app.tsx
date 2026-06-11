@@ -1,6 +1,6 @@
 import { AuthProvider } from "@context/auth";
 import ThemeProvider from "@components/theme-provider";
-import blob from "../../public/favicon.ico";
+const blob = "/favicon.ico";
 import Image from "next/image";
 import "./theme.css";
 import { Toaster } from "@components/ui/toaster";
@@ -62,21 +62,19 @@ function App({ Component, pageProps }) {
 
                             <footer className="fixed bottom-0 left-0 w-full z-40 bg-background border-t border-border select-none py-2">
                                 <div className="container mx-auto px-2">
-                                    <div className="flex flex-col items-center gap-1">
-                                        <p className="text-center text-xs text-muted-foreground">
+                                    <div className="flex flex-row items-center justify-center gap-2 text-xs text-muted-foreground">
+                                        <p>
                                             themes.equicord.org is not affiliated with or endorsed by Discord Inc.
                                         </p>
-                                        <div className="flex flex-col sm:flex-row items-center gap-2 text-xs text-muted-foreground">
-                                            <div className="h-3 w-px bg-muted-foreground/60 sm:block hidden"></div>
-                                            <a
-                                                href="/privacy"
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-muted-foreground no-underline hover:text-foreground transition-colors duration-200 flex items-center gap-2"
-                                            >
-                                                Privacy Policy
-                                            </a>
-                                        </div>
+                                        <div className="h-3 w-px bg-muted-foreground/60"></div>
+                                        <a
+                                            href="/privacy"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-muted-foreground no-underline hover:text-foreground transition-colors duration-200"
+                                        >
+                                            Privacy Policy
+                                        </a>
                                     </div>
                                 </div>
                             </footer>
@@ -94,16 +92,16 @@ function HeaderWithSearchInner() {
     return (
         <div>
             <div className="flex h-16 items-center gap-4">
-                <a href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
+                <a href="/" className="flex shrink-0 items-center space-x-3 hover:opacity-80 transition-opacity">
                     <Image src={blob} alt="Theme Library" width={32} height={32} className="rounded-lg" />
                     <span className="text-xl font-semibold tracking-tight">Theme Library</span>
                 </a>
 
-                <div className={`mx-auto w-full max-w-3xl`}>
+                <div className="flex-1 min-w-0">
                     <SearchBar value={searchQuery} onSearch={setSearchQuery} />
                 </div>
 
-                <div className="ml-auto">
+                <div className="shrink-0">
                     <AccountBar className="flex items-center" />
                 </div>
             </div>

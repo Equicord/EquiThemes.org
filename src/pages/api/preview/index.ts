@@ -15,10 +15,10 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
     let htmlContent = readFileSync(filePath, "utf8");
 
     const themeClassMap = {
-        light: "platform-web theme-light images-light density-cozy font-size-16 has-webkit-scrollbar full-motion visual-refresh mana-toggle-inputs",
-        ash: "platform-web theme-dark images-dark density-cozy font-size-16 has-webkit-scrollbar full-motion visual-refresh mana-toggle-inputs",
-        dark: "platform-web theme-dark theme-darker images-dark density-cozy font-size-16 has-webkit-scrollbar mouse-mode full-motion app-focused visual-refresh mana-toggle-inputs",
-        onyx: "platform-web theme-dark theme-midnight images-dark density-cozy font-size-16 has-webkit-scrollbar full-motion visual-refresh mana-toggle-inputs",
+        light: "platform-web theme-light images-light density-default font-size-16 has-webkit-scrollbar full-motion visual-refresh mana-toggle-inputs",
+        ash: "platform-web theme-dark images-dark density-default font-size-16 has-webkit-scrollbar mouse-mode full-motion app-focused visual-refresh mana-toggle-inputs",
+        dark: "platform-web theme-dark theme-darker images-dark density-default font-size-16 has-webkit-scrollbar full-motion visual-refresh mana-toggle-inputs",
+        onyx: "platform-web theme-dark theme-midnight images-dark density-default font-size-16 has-webkit-scrollbar full-motion visual-refresh mana-toggle-inputs",
     };
 
     const themeType = typeof theme === "string" && themeClassMap[theme] ? theme : "dark";

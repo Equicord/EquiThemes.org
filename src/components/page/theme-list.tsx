@@ -43,7 +43,7 @@ function ThemeList({ initialThemes }: { initialThemes?: Theme[] }) {
     const [loading, setLoading] = useState(!initialThemes);
     const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState("");
-    const [filter, setFilter] = useState("all");
+    const [filter, setFilter] = useState("pending");
 
     const fetchThemes = async () => {
         try {
@@ -78,7 +78,7 @@ function ThemeList({ initialThemes }: { initialThemes?: Theme[] }) {
     }, [isAuthenticated, authorizedUser, isLoading, initialThemes]);
 
     const filteredThemes = themes.filter((theme) => {
-        const matchesSearch = theme.title.toLowerCase().includes(search.toLowerCase()) || Object.values(theme.validatedUsers).some((user) => user.username.toLowerCase().includes(search.toLowerCase()));
+        const matchesSearch = (theme.title ?? "").toLowerCase().includes(search.toLowerCase()) || Object.values(theme.validatedUsers || {}).some((user) => (user.username ?? "").toLowerCase().includes(search.toLowerCase()));
         const matchesFilter = filter === "all" || theme.state === filter;
         return matchesSearch && matchesFilter;
     });

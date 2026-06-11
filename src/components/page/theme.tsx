@@ -131,7 +131,7 @@ function App({ themes }: { themes: Theme[] }) {
         if (isLoading) return [];
         return themesOnly
             .filter((t) => {
-                const match = t.name.toLowerCase().includes(lowerQuery) || t.description.toLowerCase().includes(lowerQuery);
+                const match = (t.name ?? "").toLowerCase().includes(lowerQuery) || (t.description ?? "").toLowerCase().includes(lowerQuery);
                 return match;
             })
             .sort((a, b) => (b.downloads ?? 0) - (a.downloads ?? 0));
@@ -141,7 +141,7 @@ function App({ themes }: { themes: Theme[] }) {
         if (isLoading) return [];
         return snippetsOnly
             .filter((t) => {
-                const match = t.name.toLowerCase().includes(lowerQuery) || t.description.toLowerCase().includes(lowerQuery);
+                const match = (t.name ?? "").toLowerCase().includes(lowerQuery) || (t.description ?? "").toLowerCase().includes(lowerQuery);
                 return match;
             })
             .sort((a, b) => (b.downloads ?? 0) - (a.downloads ?? 0));
@@ -260,7 +260,7 @@ function App({ themes }: { themes: Theme[] }) {
             </Tabs>
 
             {showScrollTop && (
-                <Button variant="outline" size="icon" className="fixed bottom-6 right-6 rounded-full" onClick={scrollToTop}>
+                <Button variant="outline" size="icon" className="fixed bottom-6 right-6 rounded-full mb-2" onClick={scrollToTop}>
                     <ArrowUp className="h-4 w-4" />
                 </Button>
             )}

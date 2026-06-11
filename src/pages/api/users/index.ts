@@ -11,7 +11,7 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
 			.json({ message: "Method not allowed", wants: "GET" });
 	}
 
-	const { userString } = req.query;
+	const { userString: rawUserString } = req.query;
 	const { authorization } = req.headers;
 
 	if (!authorization) {
@@ -24,19 +24,22 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
 
 	if (!token) {
 		return res.status(400).json({
-			message: "Cannot revoke authorization without unique token"
+			message: "Cannot check authorization without unique token"
 		});
 	}
 
-	if (!userString) {
+	if (!rawUserString) {
 		return res.status(400).json({
-			message: "Cannot revoke authorization without user id"
+			message: "Cannot search without a user id or username"
 		});
 	}
+
+	const userString = Array.isArray(rawUserString) ? rawUserString[0] : rawUserString;
 
 	const client = await clientPromise;
 	const db = client.db("themesDatabase");
 	const users = db.collection("users");
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const themes: Collection<Theme> = db.collection("themes");
 
 	const requester = await users.findOne({ "user.key": token });
@@ -84,9 +87,18 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
 		console.error(error);
 	}
 
-	// remove key data
-	delete user.key;
-	delete user.keyVersion;
+	if (!discordData) {
+		discordData = {
+			id: user.user.id,
+			username: user.user.username ?? user.user.id,
+			global_name: user.user.global_name ?? null,
+			avatar: user.user.avatar ?? null,
+			discriminator: "0"
+		};
+	}
+
+	delete user.user.key;
+	delete user.user.keyVersion;
 
 	return res.status(200).json({
 		status: 200,
