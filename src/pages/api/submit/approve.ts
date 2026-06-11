@@ -48,7 +48,7 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
         const submittedDb = client.db("submittedThemesDatabase");
         const themesDb = client.db("themesDatabase");
         const pendingCollection = submittedDb.collection("pending");
-        const themesCollection = themesDb.collection("themesDatabase");
+        const themesCollection = themesDb.collection("themes");
         const notificationsCollection = themesDb.collection("notifications");
 
         const theme = await pendingCollection.findOne({ _id: new ObjectId(id as string) });
@@ -86,7 +86,6 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
             }
         );
 
-        
         await notificationsCollection.insertOne({
             userId: theme.submittedBy,
             type: "theme_approved",
@@ -160,7 +159,7 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
         const newTheme = {
             name: theme.title,
             id: totalThemes + 1,
-            type: "theme",
+            type: tags.includes("snippet") ? "snippet" : "theme",
             description: theme.description,
             // eslint-disable-next-line no-unused-vars
             author: Object.entries(theme.validatedUsers).map(([id, user]: [string, any]) => ({
@@ -181,7 +180,6 @@ async function POST(req: NextApiRequest, res: NextApiResponse) {
 
         await themesCollection.insertOne(newTheme);
 
-        
         res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
         return res.status(200).json({ status: 200, title: theme.title, message: "Theme approved" });
     } catch (error) {
