@@ -101,8 +101,8 @@ export const ThemeCard = memo(({ theme, likedThemes, className, noFooter = false
             setUseFallback(true);
             const filename = theme.thumbnail_url.split('/').pop();
             if (filename) {
-                const fallbackFilename = decodeURIComponent(filename);
-                setImgSrc(`https://raw.githubusercontent.com/Equicord/Equithemes.org/master/public/thumbnails/${encodeURIComponent(fallbackFilename)}`);
+                const spaceFilename = filename.replace(/-/g, '%20');
+                setImgSrc(`https://raw.githubusercontent.com/Equicord/Equithemes.org/master/public/thumbnails/${spaceFilename}`);
             }
         }
     };
@@ -117,152 +117,73 @@ export const ThemeCard = memo(({ theme, likedThemes, className, noFooter = false
 
     const cardContent = (
         <>
-                {diagonal ? (
-                    <div className="flex h-full flex-1">
-                        <div className="w-1/2 relative flex flex-col" onMouseLeave={handleMouseLeave}>
-                            <div className="flex-1 overflow-hidden bg-muted/20 relative rounded-2xl">
-                                {useFallback ? (
-                                    <img draggable={false} src={imgSrc} alt={theme.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 select-none rounded-2xl" />
-                                ) : (
-                                    <Image draggable={false} width={854} height={480} src={imgSrc} alt={theme.name} onError={handleImageError} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 select-none rounded-2xl" />
-                                )}
-                            </div>
-                            <div className="absolute bottom-3 left-3 z-2 flex flex-wrap gap-2">
-                                {theme.tags?.slice(0, 3).map((tag) => (
-                                    <Button key={tag} variant="outline" size="sm" className="text-xs h-7 px-3 bg-background/90 backdrop-blur-md border-border/50 hover:bg-background/60 hover:border-border/80 rounded-2xl" onClick={(e) => e.preventDefault()}>
-                                        {tag}
-                                    </Button>
-                                ))}
-                                {theme.tags && theme.tags.length > 3 && (
-                                    <Popover open={isOpen} onOpenChange={setIsOpen}>
-                                        <div onMouseEnter={handleMouseEnter}>
-                                            <PopoverTrigger asChild>
-                                                <Button variant="outline" size="sm" onClick={(e) => e.preventDefault()} className="text-xs h-7 px-3 bg-background/90 backdrop-blur-md border-border/50 hover:bg-background/60 hover:border-border/80">
-                                                    +{theme.tags.length - 3}
-                                                </Button>
-                                            </PopoverTrigger>
-                                        </div>
-                                        <PopoverContent className="w-auto p-3 border-border/50 bg-background/95 backdrop-blur-md">
-                                            <div className="flex flex-wrap gap-2">
-                                                {theme.tags.slice(3).map((tag) => (
-                                                    <Button key={tag} variant="outline" size="sm" className="text-xs h-7 px-3 hover:bg-background/60 hover:border-border/80" onClick={(e) => e.preventDefault()}>
-                                                        {tag}
-                                                    </Button>
-                                                ))}
-                                            </div>
-                                        </PopoverContent>
-                                    </Popover>
-                                )}
-                            </div>
+            {diagonal ? (
+                <div className="flex h-full flex-1">
+                    <div className="w-1/2 relative flex flex-col" onMouseLeave={handleMouseLeave}>
+                        <div className="flex-1 overflow-hidden bg-muted/20 relative rounded-2xl">
+                            {useFallback ? (
+                                <img draggable={false} src={imgSrc} alt={theme.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 select-none rounded-2xl" />
+                            ) : (
+                                <Image draggable={false} width={854} height={480} src={imgSrc} alt={theme.name} onError={handleImageError} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 select-none rounded-2xl" />
+                            )}
                         </div>
-                        <div className="w-1/2 p-5 flex flex-col justify-between">
-                            <div>
-                                <h3 className="text-lg font-semibold tracking-tight text-primary mb-2">{theme.name}</h3>
-                                <div className="description text-sm text-foreground leading-relaxed line-clamp-3">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                                        {theme.description}
-                                    </ReactMarkdown>
-                                </div>
-                            </div>
-                            <div className="flex flex-col mt-4">
-                                <div className="flex justify-between items-center">
-                                    <div className="text-xs text-muted-foreground flex items-center gap-2">
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger className="text-xs text-muted-foreground flex items-center gap-2 hover:text-foreground transition-colors">
-                                                    <Clock className="h-3.5 w-3.5" />
-                                                    <span>{relativeTime}</span>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>Updated on {new Date(lastUpdated).toLocaleDateString()}</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    </div>
-                                </div>
-                            </div>
-                            {!noFooter && (
-                                <div className="mt-4 flex flex-col">
-                                    <div className="flex justify-between items-center">
-                                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                            <div className={cn("flex items-center gap-1", isLiked && "text-red-500")}>
-                                                <Heart className={cn("h-4 w-4", isLiked && "fill-current")} />
-                                                <span>{theme.likes}</span>
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <Download className="h-4 w-4" />
-                                                <span>{theme?.downloads ?? 0}</span>
-                                            </div>
-                                        </div>
-                                        {!disableDownloads && (
-                                            <Button disabled={isDownloaded} size="sm" className="h-8" onClick={handleDownload}>
-                                                {isDownloaded ? (
-                                                    <>
-                                                        <Check className="mr-1.5 h-3.5 w-3.5" />
-                                                        Downloaded
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Download className="mr-1.5 h-3.5 w-3.5" />
-                                                        Download
-                                                    </>
-                                                )}
+                        <div className="absolute bottom-3 left-3 z-2 flex flex-wrap gap-2">
+                            {theme.tags?.slice(0, 3).map((tag) => (
+                                <Button key={tag} variant="outline" size="sm" className="text-xs h-7 px-3 bg-background/90 backdrop-blur-md border-border/50 hover:bg-background/60 hover:border-border/80 rounded-2xl" onClick={(e) => e.preventDefault()}>
+                                    {tag}
+                                </Button>
+                            ))}
+                            {theme.tags && theme.tags.length > 3 && (
+                                <Popover open={isOpen} onOpenChange={setIsOpen}>
+                                    <div onMouseEnter={handleMouseEnter}>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline" size="sm" onClick={(e) => e.preventDefault()} className="text-xs h-7 px-3 bg-background/90 backdrop-blur-md border-border/50 hover:bg-background/60 hover:border-border/80">
+                                                +{theme.tags.length - 3}
                                             </Button>
-                                        )}
+                                        </PopoverTrigger>
                                     </div>
-                                </div>
+                                    <PopoverContent className="w-auto p-3 border-border/50 bg-background/95 backdrop-blur-md">
+                                        <div className="flex flex-wrap gap-2">
+                                            {theme.tags.slice(3).map((tag) => (
+                                                <Button key={tag} variant="outline" size="sm" className="text-xs h-7 px-3 hover:bg-background/60 hover:border-border/80" onClick={(e) => e.preventDefault()}>
+                                                    {tag}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
                             )}
                         </div>
                     </div>
-                ) : (
-                    <>
-                        <CardHeader className="p-0 relative" onMouseLeave={handleMouseLeave}>
-                            <div className="aspect-[16/9] overflow-hidden bg-muted/20 relative rounded-t-2xl">
-                                {useFallback ? (
-                                    <img draggable={false} src={imgSrc} alt={theme.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 select-none" />
-                                ) : (
-                                    <Image draggable={false} width={854} height={480} src={imgSrc} alt={theme.name} onError={handleImageError} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 select-none" />
-                                )}
-                            </div>
-                            <div className="absolute bottom-3 left-3 z-2 flex flex-wrap gap-2">
-                                {theme.tags?.slice(0, 3).map((tag) => (
-                                    <Button key={tag} variant="outline" size="sm" className="text-xs h-7 px-3 bg-background/90 backdrop-blur-md border-border/50 hover:bg-background/60 hover:border-border/80" onClick={(e) => e.preventDefault()}>
-                                        {tag}
-                                    </Button>
-                                ))}
-                                {theme.tags && theme.tags.length > 3 && (
-                                    <Popover open={isOpen} onOpenChange={setIsOpen}>
-                                        <div onMouseEnter={handleMouseEnter}>
-                                            <PopoverTrigger asChild>
-                                                <Button variant="outline" size="sm" onClick={(e) => e.preventDefault()} className="text-xs h-7 px-3 bg-background/90 backdrop-blur-md border-border/50 hover:bg-background/60 hover:border-border/80">
-                                                    +{theme.tags.length - 3}
-                                                </Button>
-                                            </PopoverTrigger>
-                                        </div>
-                                        <PopoverContent className="w-auto p-3 border-border/50 bg-background/95 backdrop-blur-md">
-                                            <div className="flex flex-wrap gap-2">
-                                                {theme.tags.slice(3).map((tag) => (
-                                                    <Button key={tag} variant="outline" size="sm" className="text-xs h-7 px-3 hover:bg-background/60 hover:border-border/80" onClick={(e) => e.preventDefault()}>
-                                                        {tag}
-                                                    </Button>
-                                                ))}
-                                            </div>
-                                        </PopoverContent>
-                                    </Popover>
-                                )}
-                            </div>
-                        </CardHeader>
-                        <CardContent className="p-5 flex-grow">
+                    <div className="w-1/2 p-5 flex flex-col justify-between">
+                        <div>
                             <h3 className="text-lg font-semibold tracking-tight text-primary mb-2">{theme.name}</h3>
-                            <div className="description line-clamp-3 text-sm text-foreground leading-relaxed">
+                            <div className="description text-sm text-foreground leading-relaxed line-clamp-3">
                                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                                     {theme.description}
                                 </ReactMarkdown>
                             </div>
-                        </CardContent>
+                        </div>
+                        <div className="flex flex-col mt-4">
+                            <div className="flex justify-between items-center">
+                                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger className="text-xs text-muted-foreground flex items-center gap-2 hover:text-foreground transition-colors">
+                                                <Clock className="h-3.5 w-3.5" />
+                                                <span>{relativeTime}</span>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>Updated on {new Date(lastUpdated).toLocaleDateString()}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </div>
+                            </div>
+                        </div>
                         {!noFooter && (
-                            <CardFooter className="p-5 pt-0 mt-auto">
-                                <div className="flex justify-between items-center w-full">
+                            <div className="mt-4 flex flex-col">
+                                <div className="flex justify-between items-center">
                                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                         <div className={cn("flex items-center gap-1", isLiked && "text-red-500")}>
                                             <Heart className={cn("h-4 w-4", isLiked && "fill-current")} />
@@ -289,10 +210,89 @@ export const ThemeCard = memo(({ theme, likedThemes, className, noFooter = false
                                         </Button>
                                     )}
                                 </div>
-                            </CardFooter>
+                            </div>
                         )}
-                    </>
-                )}
+                    </div>
+                </div>
+            ) : (
+                <>
+                    <CardHeader className="p-0 relative" onMouseLeave={handleMouseLeave}>
+                        <div className="aspect-[16/9] overflow-hidden bg-muted/20 relative rounded-t-2xl">
+                            {useFallback ? (
+                                <img draggable={false} src={imgSrc} alt={theme.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 select-none" />
+                            ) : (
+                                <Image draggable={false} width={854} height={480} src={imgSrc} alt={theme.name} onError={handleImageError} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 select-none" />
+                            )}
+                        </div>
+                        <div className="absolute bottom-3 left-3 z-2 flex flex-wrap gap-2">
+                            {theme.tags?.slice(0, 3).map((tag) => (
+                                <Button key={tag} variant="outline" size="sm" className="text-xs h-7 px-3 bg-background/90 backdrop-blur-md border-border/50 hover:bg-background/60 hover:border-border/80" onClick={(e) => e.preventDefault()}>
+                                    {tag}
+                                </Button>
+                            ))}
+                            {theme.tags && theme.tags.length > 3 && (
+                                <Popover open={isOpen} onOpenChange={setIsOpen}>
+                                    <div onMouseEnter={handleMouseEnter}>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline" size="sm" onClick={(e) => e.preventDefault()} className="text-xs h-7 px-3 bg-background/90 backdrop-blur-md border-border/50 hover:bg-background/60 hover:border-border/80">
+                                                +{theme.tags.length - 3}
+                                            </Button>
+                                        </PopoverTrigger>
+                                    </div>
+                                    <PopoverContent className="w-auto p-3 border-border/50 bg-background/95 backdrop-blur-md">
+                                        <div className="flex flex-wrap gap-2">
+                                            {theme.tags.slice(3).map((tag) => (
+                                                <Button key={tag} variant="outline" size="sm" className="text-xs h-7 px-3 hover:bg-background/60 hover:border-border/80" onClick={(e) => e.preventDefault()}>
+                                                    {tag}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                            )}
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-5 flex-grow">
+                        <h3 className="text-lg font-semibold tracking-tight text-primary mb-2">{theme.name}</h3>
+                        <div className="description line-clamp-3 text-sm text-foreground leading-relaxed">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                                {theme.description}
+                            </ReactMarkdown>
+                        </div>
+                    </CardContent>
+                    {!noFooter && (
+                        <CardFooter className="p-5 pt-0 mt-auto">
+                            <div className="flex justify-between items-center w-full">
+                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                    <div className={cn("flex items-center gap-1", isLiked && "text-red-500")}>
+                                        <Heart className={cn("h-4 w-4", isLiked && "fill-current")} />
+                                        <span>{theme.likes}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <Download className="h-4 w-4" />
+                                        <span>{theme?.downloads ?? 0}</span>
+                                    </div>
+                                </div>
+                                {!disableDownloads && (
+                                    <Button disabled={isDownloaded} size="sm" className="h-8" onClick={handleDownload}>
+                                        {isDownloaded ? (
+                                            <>
+                                                <Check className="mr-1.5 h-3.5 w-3.5" />
+                                                Downloaded
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Download className="mr-1.5 h-3.5 w-3.5" />
+                                                Download
+                                            </>
+                                        )}
+                                    </Button>
+                                )}
+                            </div>
+                        </CardFooter>
+                    )}
+                </>
+            )}
         </>
     );
 
