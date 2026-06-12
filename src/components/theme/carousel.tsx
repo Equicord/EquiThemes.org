@@ -73,6 +73,10 @@ export default function ThemeCarousel({ themes = [] }: ThemeCarouselProps) {
         };
     }, [api]);
 
+    if (sortedThemes.length === 0) {
+        return null;
+    }
+
     return (
         <div className="w-full relative" ref={containerRef}>
             <Carousel

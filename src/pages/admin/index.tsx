@@ -119,6 +119,33 @@ export default function AdminDashboard() {
 		return () => controller.abort();
 	}, [isAuthenticated, authorizedUser?.id, authorizedUser?.admin, isLoading, router]);
 
+	useEffect(() => {
+		const term = searchQuery.trim();
+		if (term.length < 2) {
+			setSuggestions([]);
+			return;
+		}
+
+		const controller = new AbortController();
+		const timeout = setTimeout(async () => {
+			try {
+				const token = getCookie("_dtoken");
+				const response = await fetch(`/api/users/search?q=${encodeURIComponent(term)}`, {
+					headers: { Authorization: `Bearer ${token}` },
+					signal: controller.signal
+				});
+				if (!response.ok) return;
+				const data = await response.json();
+				setSuggestions(Array.isArray(data.users) ? data.users : []);
+			} catch { }
+		}, 250);
+
+		return () => {
+			clearTimeout(timeout);
+			controller.abort();
+		};
+	}, [searchQuery]);
+
 	if (isLoading || loading || !stats) {
 		return (
 			<div className="min-h-screen flex items-center justify-center">
@@ -163,35 +190,6 @@ export default function AdminDashboard() {
 			setIsSearching(false);
 		}
 	};
-
-	useEffect(() => {
-		const term = searchQuery.trim();
-		if (term.length < 2) {
-			setSuggestions([]);
-			return;
-		}
-
-		const controller = new AbortController();
-		const timeout = setTimeout(async () => {
-			try {
-				const token = getCookie("_dtoken");
-				const response = await fetch(`/api/users/search?q=${encodeURIComponent(term)}`, {
-					headers: { Authorization: `Bearer ${token}` },
-					signal: controller.signal
-				});
-				if (!response.ok) return;
-				const data = await response.json();
-				setSuggestions(Array.isArray(data.users) ? data.users : []);
-			} catch {
-				// ignore aborted/failed suggestion lookups
-			}
-		}, 250);
-
-		return () => {
-			clearTimeout(timeout);
-			controller.abort();
-		};
-	}, [searchQuery]);
 
 	const handleSendAnnouncement = async () => {
 		if (!announcementTitle.trim() || !announcementMessage.trim()) {
