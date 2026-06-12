@@ -85,7 +85,7 @@
         "lightningcss": "^1.32.0",
         "mime": "^4.1.0",
         "postcss": "^8.5.15",
-        "postcss-selector-parser": "^7.1.4",
+        "postcss-selector-parser": "^7.1.1",
         "prettier": "^3.8.4",
         "puppeteer": "^24.43.1",
         "purgecss": "^8.0.0",

@@ -9,6 +9,9 @@ const require = createRequire(import.meta.url);
 const nextPlugin = require("@next/eslint-plugin-next");
 
 export default [
+    {
+        ignores: ["**/.next/**", "**/node_modules/**", "**/public/**", "**/dist/**", "**/*.tsbuildinfo"],
+    },
     js.configs.recommended,
     reactPlugin.configs.flat.recommended,
     {
@@ -40,7 +43,6 @@ export default [
     },
     prettierConfig,
     {
-        ignores: ["**/.next/**", "**/node_modules/**", "**/public/**"],
         rules: {
             "sort-imports": ["warn", {
                 ignoreCase: true,
