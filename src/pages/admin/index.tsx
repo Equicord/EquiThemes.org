@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/router";
 import { useWebContext } from "@context/auth";
 import { Button } from "@components/ui/button";
@@ -32,26 +32,10 @@ import {
 } from "@components/ui/dialog";
 import { Input } from "@components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
-import { Badge } from "@components/ui/badge";
 import { Label } from "@components/ui/label";
 import { Textarea } from "@components/ui/textarea";
 import { toast } from "@hooks/use-toast";
 import type { InternalStats } from "@types";
-
-/** Response shape of POST /api/admin/sync-themes. */
-interface SyncResult {
-	status: number;
-	message: string;
-	approved: {
-		total: number;
-		updated?: number;
-	};
-	submissions: {
-		updated: number;
-		total: number;
-		description: string;
-	};
-}
 
 export default function AdminDashboard() {
 	const router = useRouter();
@@ -68,8 +52,20 @@ export default function AdminDashboard() {
 	const [announcementTitle, setAnnouncementTitle] = useState("");
 	const [announcementMessage, setAnnouncementMessage] = useState("");
 	const [isSubmittingAnnouncement, setIsSubmittingAnnouncement] = useState(false);
-	const [isSyncingThemes, setIsSyncingThemes] = useState(false);
-	const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
+	const searchContainerRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		const handleClickOutside = (event: MouseEvent) => {
+			if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+				setShowSuggestions(false);
+			}
+		};
+
+		document.addEventListener("mousedown", handleClickOutside);
+		return () => {
+			document.removeEventListener("mousedown", handleClickOutside);
+		};
+	}, []);
 
 	useEffect(() => {
 		if (isLoading) return;
@@ -240,41 +236,6 @@ export default function AdminDashboard() {
 		}
 	};
 
-	const handleSyncThemes = async () => {
-		setIsSyncingThemes(true);
-		setSyncResult(null);
-		try {
-			const token = getCookie("_dtoken");
-			const response = await fetch("/api/admin/sync-themes", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${token}`
-				}
-			});
-
-			if (!response.ok) {
-				throw new Error(response.statusText);
-			}
-
-			const data = await response.json();
-			setSyncResult(data);
-			toast({
-				title: "Success",
-				description: `Synced ${data.approved?.total || 0} approved themes and updated ${data.submissions?.updated || 0} submissions`,
-				variant: "default"
-			});
-		} catch (error) {
-			toast({
-				title: "Error",
-				description: error.message || "Failed to sync themes",
-				variant: "destructive"
-			});
-		} finally {
-			setIsSyncingThemes(false);
-		}
-	};
-
 	const formatBytes = (bytes: number) => {
 		if (bytes === 0) return "0 Bytes";
 		const k = 1024;
@@ -408,13 +369,13 @@ export default function AdminDashboard() {
 								</Button>
 							</DialogTrigger>
 
-							<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+							<DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
 								<DialogHeader>
 									<DialogTitle>Search Users</DialogTitle>
 								</DialogHeader>
 
 								<div className="flex flex-col sm:flex-row gap-2">
-									<div className="relative flex-1">
+									<div className="relative flex-1" ref={searchContainerRef}>
 										<Input
 											placeholder="Search by ID or username..."
 											value={searchQuery}
@@ -423,7 +384,6 @@ export default function AdminDashboard() {
 												setShowSuggestions(true);
 											}}
 											onFocus={() => setShowSuggestions(true)}
-											onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
 											onKeyDown={e =>
 												e.key === "Enter" &&
 												handleUserSearch()
@@ -431,7 +391,7 @@ export default function AdminDashboard() {
 											className="w-full"
 										/>
 										{showSuggestions && suggestions.length > 0 && (
-											<div className="absolute z-50 mt-1 w-full rounded-lg border border-border bg-popover shadow-lg overflow-hidden">
+											<div className="absolute z-50 mt-1 w-full rounded-lg border border-border bg-popover shadow-lg overflow-y-auto max-h-60">
 												{suggestions.map(s => (
 													<button
 														key={s.id}
@@ -495,7 +455,7 @@ export default function AdminDashboard() {
 								)}
 
 								{searchResults && (
-									<div className="mt-6 space-y-6">
+									<div className="mt-6 space-y-6 overflow-y-auto pr-2 pb-2">
 
 										<div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg border border-border/40">
 											<Avatar className="h-16 w-16">
@@ -771,50 +731,6 @@ export default function AdminDashboard() {
 								</div>
 							</DialogContent>
 						</Dialog>
-					</CardContent>
-				</Card>
-			</div>
-
-			<div className="mt-8">
-				<Card className="border-border/40">
-					<CardHeader>
-						<div className="flex items-center gap-2">
-							<DatabaseIcon className="h-5 w-5 text-muted-foreground" />
-							<div>
-								<CardTitle>Sync Database</CardTitle>
-								<CardDescription>
-									Sync theme titles and trunicate them
-								</CardDescription>
-							</div>
-						</div>
-					</CardHeader>
-					<CardContent className="space-y-4">
-						<Button
-							onClick={handleSyncThemes}
-							disabled={isSyncingThemes}
-							className="w-full"
-						>
-							{isSyncingThemes ? (
-								<>
-									<Loader2 className="h-4 w-4 mr-2 animate-spin" />
-									Syncing...
-								</>
-							) : (
-								<>
-									<DatabaseIcon className="h-4 w-4 mr-2" />
-									Sync Themes Now
-								</>
-							)}
-						</Button>
-
-						{syncResult && (
-							<div className="text-sm space-y-2 p-3 bg-muted rounded-lg">
-								<div className="font-medium">Sync Results:</div>
-								<div>Approved Themes: <span className="font-semibold">{syncResult.approved?.updated}</span> updated, <span className="font-semibold">{syncResult.approved?.total}</span> total</div>
-								<div>Submissions: <span className="font-semibold">{syncResult.submissions?.updated}</span> updated, <span className="font-semibold">{syncResult.submissions?.total}</span> total</div>
-								<div className="text-xs text-muted-foreground mt-2">{syncResult.submissions?.description}</div>
-							</div>
-						)}
 					</CardContent>
 				</Card>
 			</div>
