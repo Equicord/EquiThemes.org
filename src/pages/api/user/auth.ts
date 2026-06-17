@@ -92,7 +92,7 @@ async function GET(req: NextApiRequest, res: NextApiResponse) {
             "Content-Type": "application/x-www-form-urlencoded"
         },
         body: new URLSearchParams({
-            client_id: process.env.NEXT_PUBLIC_AUTH_DISCORD_ID,
+            client_id: process.env.AUTH_DISCORD_ID,
             client_secret: process.env.AUTH_DISCORD_SECRET,
             code: code as string,
             grant_type: "authorization_code",

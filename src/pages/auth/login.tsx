@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Head from "next/head";
 import { SERVER } from "@constants";
 
-const redirect = `https://discord.com/oauth2/authorize?client_id=${process.env.NEXT_PUBLIC_AUTH_DISCORD_ID}&response_type=code&redirect_uri=${SERVER}/api/user/auth?callback={CALLBACK}&scope=connections%20identify`;
+const redirect = `https://discord.com/oauth2/authorize?client_id=${process.env.AUTH_DISCORD_ID}&response_type=code&redirect_uri=${SERVER}/api/user/auth?callback={CALLBACK}&scope=connections%20identify`;
 
 export default function AuthCallback() {
     const router = useRouter();
